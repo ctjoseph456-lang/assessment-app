@@ -386,6 +386,15 @@ a:hover {
   margin-top: 4px;
 }
 
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
 /* Form page */
 .form-page {
   max-width: 800px;

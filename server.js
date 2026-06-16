@@ -21,6 +21,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS assessments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id),
+    tutor_name TEXT DEFAULT '',
+    phone TEXT DEFAULT '',
     slot TEXT NOT NULL,
     student_name TEXT NOT NULL,
     student_age TEXT NOT NULL,
@@ -33,6 +35,8 @@ db.exec(`
     feedback TEXT NOT NULL,
     interest_level INTEGER NOT NULL,
     additional_remarks TEXT DEFAULT '',
+    date TEXT DEFAULT '',
+    time TEXT DEFAULT '',
     status TEXT DEFAULT 'New',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -166,18 +170,18 @@ app.get('/api/topics/:level', (req, res) => {
 
 app.post('/api/assessments', (req, res) => {
   try {
-    const { slot, student_name, student_age, language, level, topics_known, topics_covered, start_topic, revision_topics, feedback, interest_level, additional_remarks } = req.body;
+    const { tutor_name, phone, slot, student_name, student_age, language, level, topics_known, topics_covered, start_topic, revision_topics, feedback, interest_level, additional_remarks, date, time } = req.body;
     if (!slot || !student_name || !student_age || !language || !level || !feedback || !interest_level) {
       return res.status(400).json({ error: 'Required fields missing' });
     }
     const stmt = db.prepare(`INSERT INTO assessments
-      (user_id, slot, student_name, student_age, language, level, topics_known, topics_covered, start_topic, revision_topics, feedback, interest_level, additional_remarks)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      (user_id, tutor_name, phone, slot, student_name, student_age, language, level, topics_known, topics_covered, start_topic, revision_topics, feedback, interest_level, additional_remarks, date, time)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     stmt.run(
-      req.session.userId, slot, student_name, student_age, language, level,
+      req.session.userId, tutor_name || '', phone || '', slot, student_name, student_age, language, level,
       JSON.stringify(topics_known || []), JSON.stringify(topics_covered || []),
       start_topic || '', JSON.stringify(revision_topics || []),
-      feedback, interest_level, additional_remarks || ''
+      feedback, interest_level, additional_remarks || '', date || '', time || ''
     );
     res.json({ success: true });
   } catch (err) {
@@ -187,7 +191,13 @@ app.post('/api/assessments', (req, res) => {
 });
 
 app.get('/api/assessments', requireAuth, (req, res) => {
-  const list = db.prepare('SELECT id, slot, student_name, level, interest_level, status, created_at FROM assessments ORDER BY created_at DESC').all();
+  const { tutor } = req.query;
+  let list;
+  if (tutor) {
+    list = db.prepare("SELECT id, tutor_name, phone, slot, student_name, student_age, language, level, interest_level, status, date, time, created_at FROM assessments WHERE tutor_name = ? ORDER BY created_at DESC").all(tutor);
+  } else {
+    list = db.prepare("SELECT id, tutor_name, phone, slot, student_name, student_age, language, level, interest_level, status, date, time, created_at FROM assessments ORDER BY created_at DESC").all();
+  }
   res.json(list);
 });
 
@@ -213,6 +223,11 @@ app.patch('/api/assessments/:id/status', requireAuth, (req, res) => {
   if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status' });
   db.prepare('UPDATE assessments SET status = ? WHERE id = ?').run(status, req.params.id);
   res.json({ success: true });
+});
+
+app.get('/api/tutors', requireAuth, (req, res) => {
+  const tutors = db.prepare("SELECT DISTINCT tutor_name FROM assessments WHERE tutor_name != '' ORDER BY tutor_name").all();
+  res.json(tutors.map(t => t.tutor_name));
 });
 
 app.get('/api/analytics/summary', requireAuth, (req, res) => {

@@ -16,6 +16,7 @@
       <nav class="sidebar-nav">
         <a href="form.html" class="active"><i class="fas fa-edit"></i> New Assessment</a>
         <a href="dashboard.html"><i class="fas fa-list"></i> Submissions</a>
+        <a href="tutor-view.html"><i class="fas fa-user-graduate"></i> My Assessments</a>
         <a href="analytics.html"><i class="fas fa-chart-pie"></i> Analytics</a>
       </nav>
     </aside>
@@ -35,40 +36,58 @@
           </div>
 
           <form id="assessmentForm">
-            <div class="form-section">
-              <h2>Basic Information</h2>
-              <div class="form-group">
-                <label for="slot">Demo Slot Number *</label>
-                <select id="slot" required></select>
-              </div>
-              <div class="form-group">
-                <label for="student_name">Student Full Name *</label>
-                <input type="text" id="student_name" placeholder="Enter student's full name" required>
-              </div>
-              <div class="form-group">
-                <label for="student_age">Student Age *</label>
-                <input type="text" id="student_age" placeholder="e.g. 12 years" required>
-              </div>
-              <div class="form-group">
-                <label>Preferred Language of Instruction *</label>
-                <div class="radio-group" id="languageGroup">
-                  <label><input type="radio" name="language" value="Malayalam" required><span>Malayalam</span></label>
-                  <label><input type="radio" name="language" value="English"><span>English</span></label>
-                  <label><input type="radio" name="language" value="Hindi"><span>Hindi</span></label>
-                  <label><input type="radio" name="language" value="Tamil"><span>Tamil</span></label>
-                  <label><input type="radio" name="language" value="Manglish"><span>Manglish</span></label>
-                  <label><input type="radio" name="language" value="Hinglish"><span>Hinglish</span></label>
+              <div class="form-section">
+                <h2>Basic Information</h2>
+                <div class="form-group">
+                  <label for="tutor_name">Tutor Name *</label>
+                  <input type="text" id="tutor_name" placeholder="Enter your name" required>
+                </div>
+                <div class="form-group">
+                  <label for="phone">Parent/Guardian Phone</label>
+                  <input type="text" id="phone" placeholder="e.g. 971502423551">
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="date">Demo Date *</label>
+                    <input type="date" id="date" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="time">Demo Time *</label>
+                    <input type="time" id="time" required>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="slot">Demo Slot Number *</label>
+                  <select id="slot" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="student_name">Student Full Name *</label>
+                  <input type="text" id="student_name" placeholder="Enter student's full name" required>
+                </div>
+                <div class="form-group">
+                  <label for="student_age">Student Age *</label>
+                  <input type="text" id="student_age" placeholder="e.g. 12 years" required>
+                </div>
+                <div class="form-group">
+                  <label>Preferred Language of Instruction *</label>
+                  <div class="radio-group" id="languageGroup">
+                    <label><input type="radio" name="language" value="Malayalam" required><span>Malayalam</span></label>
+                    <label><input type="radio" name="language" value="English"><span>English</span></label>
+                    <label><input type="radio" name="language" value="Hindi"><span>Hindi</span></label>
+                    <label><input type="radio" name="language" value="Tamil"><span>Tamil</span></label>
+                    <label><input type="radio" name="language" value="Manglish"><span>Manglish</span></label>
+                    <label><input type="radio" name="language" value="Hinglish"><span>Hinglish</span></label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Assessed Student Level *</label>
+                  <div class="radio-group" id="levelGroup">
+                    <label><input type="radio" name="level" value="Beginner" required><span>Beginner</span></label>
+                    <label><input type="radio" name="level" value="Intermediate"><span>Intermediate</span></label>
+                    <label><input type="radio" name="level" value="Advanced"><span>Advanced</span></label>
+                  </div>
                 </div>
               </div>
-              <div class="form-group">
-                <label>Assessed Student Level *</label>
-                <div class="radio-group" id="levelGroup">
-                  <label><input type="radio" name="level" value="Beginner" required><span>Beginner</span></label>
-                  <label><input type="radio" name="level" value="Intermediate"><span>Intermediate</span></label>
-                  <label><input type="radio" name="level" value="Advanced"><span>Advanced</span></label>
-                </div>
-              </div>
-            </div>
 
             <div id="levelSections">
               <div class="form-section level-section hidden" data-level="Beginner">
@@ -194,6 +213,10 @@
       Advanced: []
     };
 
+    // Auto-fill today's date and current time
+    document.getElementById('date').valueAsDate = new Date();
+    document.getElementById('time').value = new Date().toTimeString().slice(0, 5);
+
     // Populate slots
     (async () => {
       const res = await fetch('/api/slots');
@@ -247,6 +270,10 @@
 
       const l = level.toLowerCase();
       const payload = {
+        tutor_name: document.getElementById('tutor_name').value,
+        phone: document.getElementById('phone').value,
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
         slot: document.getElementById('slot').value,
         student_name: document.getElementById('student_name').value,
         student_age: document.getElementById('student_age').value,
@@ -261,7 +288,7 @@
         additional_remarks: document.getElementById('remarks').value
       };
 
-      if (!payload.slot || !payload.student_name || !payload.student_age || !payload.language || !payload.feedback || !payload.interest_level) {
+      if (!payload.tutor_name || !payload.date || !payload.time || !payload.slot || !payload.student_name || !payload.student_age || !payload.language || !payload.feedback || !payload.interest_level) {
         alert('Please fill all required fields');
         return;
       }
