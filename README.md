@@ -17,26 +17,4 @@ A web app for chess coaches to evaluate students during demo classes. Tracks stu
 - **Frontend:** Plain HTML/CSS/JS (no framework)
 - **Auth:** bcrypt + express-session
 
-## Quick Start
 
-```bash
-npm install
-node server.js
-```
-
-Open http://localhost:3000. Register as the first user (auto-admin).
-
-## API Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | /api/register | No | Register (first user is admin) |
-| POST | /api/login | No | Login |
-| GET | /api/slots | No | List demo slots 1–26 |
-| GET | /api/topics/:level | No | Topics for Beginner/Intermediate/Advanced |
-| POST | /api/assessments | No | Submit assessment |
-| GET | /api/assessments | Yes | List all submissions |
-| GET | /api/assessments/:id | Yes | Get full assessment details |
-| PATCH | /api/assessments/:id/status | Yes | Update lead status |
-| GET | /api/analytics/summary | Yes | Aggregated analytics data |
-| GET | /api/analytics/over-time | Yes | Submissions over time |
