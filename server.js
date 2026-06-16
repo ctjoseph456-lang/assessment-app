@@ -38,6 +38,15 @@ db.exec(`
   );
 `);
 
+const ADMIN_EMAIL = 'test@admin.com';
+const ADMIN_PASSWORD = 'admin123';
+const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(ADMIN_EMAIL);
+if (!existingAdmin) {
+  const hash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+  db.prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)').run('Test Admin', ADMIN_EMAIL, hash, 'admin');
+  console.log('Default admin seeded: test@admin.com / admin123');
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
