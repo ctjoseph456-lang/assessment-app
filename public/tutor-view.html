@@ -286,29 +286,24 @@
     function buildLevelSection(level) {
       const topics = TOPICS[level] || [];
       if (!topics.length) return `<p style="color:var(--text-secondary);font-size:0.85rem">No topic checklists for ${level} level.</p>`;
-      return `
-        <div style="margin-top:12px">
-          <label style="font-weight:600">${level} — Topics Already Known</label>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" class="cb-group" data-group="known-${level}">
-            ${topics.map(t => `<label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer"><input type="checkbox" value="${t}"> ${t}</label>`).join('')}
-          </div>
-        </div>
+      const groupTpl = (group, label) => `
         <div style="margin-top:10px">
-          <label style="font-weight:600">${level} — Topics Covered During Demo</label>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" class="cb-group" data-group="covered-${level}">
-            ${topics.map(t => `<label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer"><input type="checkbox" value="${t}"> ${t}</label>`).join('')}
-          </div>
-        </div>
-        <div style="margin-top:10px">
-          <label for="start_${level}">Recommended Start Topic</label>
-          <input type="text" id="start_${level}" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.9rem;box-sizing:border-box;margin-top:4px" placeholder="e.g. Start from Functions">
-        </div>
-        <div style="margin-top:10px">
-          <label style="font-weight:600">${level} — Topics Needing Revision</label>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" class="cb-group" data-group="revision-${level}">
-            ${topics.map(t => `<label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer"><input type="checkbox" value="${t}"> ${t}</label>`).join('')}
+          <label style="font-weight:600">${label}</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px" class="cb-group" data-group="${group}">
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer;font-weight:600" class="select-all-cb">
+              <input type="checkbox"> Select All
+            </label>
+            ${topics.map(t => `<label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer"><input type="checkbox" value="${t}"> ${t}</label>`).join('')}
           </div>
         </div>`;
+      return `
+        ${groupTpl(`known-${level}`, `${level} — Topics Already Known`)}
+        ${groupTpl(`covered-${level}`, `${level} — Topics Covered During Demo`)}
+        <div style="margin-top:12px">
+          <label for="start_${level}" style="font-weight:600">Recommended Start Topic</label>
+          <input type="text" id="start_${level}" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.9rem;box-sizing:border-box;margin-top:4px" placeholder="e.g. Start from Functions">
+        </div>
+        ${groupTpl(`revision-${level}`, `${level} — Topics Needing Revision`)}`;
     }
 
     function openForm(row, tutorName, studentName, slot, date, time, phone, age, language) {
@@ -336,6 +331,14 @@
     });
     document.getElementById('formModal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) document.getElementById('formModal').classList.remove('open');
+    });
+    document.getElementById('formModal').addEventListener('change', (e) => {
+      const cb = e.target.closest('.select-all-cb input[type=checkbox]');
+      if (!cb) return;
+      const group = cb.closest('.cb-group');
+      if (!group) return;
+      const checked = cb.checked;
+      group.querySelectorAll('label:not(.select-all-cb) input[type=checkbox]').forEach(i => i.checked = checked);
     });
 
     document.getElementById('form_level').addEventListener('change', function() {
