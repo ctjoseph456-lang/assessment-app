@@ -353,12 +353,12 @@ async function syncSheet() {
     const entries = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      if (!r[0] || r[0].trim() === '' || r[0] === 'ETE - please don\'t delete') continue;
+      if (r[0] === 'ETE - please don\'t delete' || ((!r[0] || r[0].trim() === '') && (!r[8] || r[8].trim() === ''))) continue;
       if (i + 1 < 2904) continue;
       const statusRow = db.prepare('SELECT status FROM sheet_statuses WHERE row_number = ?').get(i + 1);
       entries.push({
         row: i + 1,
-        demo_status: (r[0] || '').trim(),
+        demo_status: (r[0] || '').trim() || 'New',
         slot: (r[2] || '').trim(),
         date: (r[6] || '').trim(),
         time: (r[7] || '').trim(),
