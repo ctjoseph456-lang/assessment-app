@@ -270,7 +270,7 @@ async function syncSheet() {
     const sheets = google.sheets({ version: 'v4', auth });
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'A:J',
+      range: "'trail 2.0'!A:J",
     });
     const rows = res.data.values || [];
     const entries = [];
