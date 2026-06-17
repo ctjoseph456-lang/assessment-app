@@ -189,6 +189,11 @@ app.post('/api/assessments', (req, res) => {
       start_topic || '', JSON.stringify(revision_topics || []),
       feedback, interest_level, additional_remarks || '', date || '', time || ''
     );
+    appendToSheet({
+      demo_status: 'Demo Done',
+      slot, date, time, tutor_name, student_name,
+      age: student_age, language, phone,
+    });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -264,15 +269,51 @@ if (process.env.GOOGLE_CREDENTIALS_JSON) {
   CREDENTIALS_PATH = tmp;
 }
 
+function getSheetsClient() {
+  const auth = new google.auth.GoogleAuth({
+    keyFilename: CREDENTIALS_PATH,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  return google.sheets({ version: 'v4', auth });
+}
+
+async function appendToSheet(data) {
+  try {
+    const sheets = getSheetsClient();
+    const values = [[
+      data.demo_status || 'Demo Done',
+      '',
+      data.slot || '',
+      '', '', '',
+      data.date || '',
+      data.time || '',
+      data.tutor_name || '',
+      data.student_name || '',
+      '',
+      data.age || '',
+      data.language || '',
+      data.agent_name || '',
+      '', '', '',
+      data.phone || ''
+    ]];
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "'Trial 2.0'!A:R",
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values },
+    });
+  } catch (err) {
+    console.error('Sheet append error:', err.message);
+  }
+}
+
 let sheetDataCache = [];
 let lastSync = null;
 
 async function syncSheet() {
   try {
-    const auth = new google.auth.GoogleAuth({
-      keyFilename: CREDENTIALS_PATH,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
+    const sheets = getSheetsClient();
     const sheets = google.sheets({ version: 'v4', auth });
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
