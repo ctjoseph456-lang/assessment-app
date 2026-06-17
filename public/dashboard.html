@@ -186,7 +186,7 @@
 
     function normalizeDate(val) {
       if (!val) return '';
-      const m = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      const m = val.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/);
       if (!m) return val;
       let dd = m[1].padStart(2, '0');
       let mm = m[2].padStart(2, '0');
