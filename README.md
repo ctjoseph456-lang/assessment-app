@@ -37,9 +37,7 @@ A web app for **Eight Times Eight (ETE)** chess coaches to evaluate students dur
 
 ## Admin Account
 
-- **Email:** `admin@ete.com`
-- **Password:** `chessislive`
-- Seeded automatically on fresh deploy (no registration).
+Seeded automatically on fresh deploy — single admin, no registration. Credentials are in the Railway environment variables.
 
 ## Google Sheets Integration
 
