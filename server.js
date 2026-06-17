@@ -248,8 +248,15 @@ app.get('/api/analytics/over-time', requireAuth, (req, res) => {
 
 // Google Sheets integration
 const { google } = require('googleapis');
-const CREDENTIALS_PATH = path.join(__dirname, 'google-credentials.json');
+const fs = require('fs');
 const SPREADSHEET_ID = '1nYvdZwZgqymw89waZXr1gyOVgPtmPN9CuAzQWx5y8Mg';
+
+let CREDENTIALS_PATH = path.join(__dirname, 'google-credentials.json');
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+  const tmp = path.join('/tmp', 'google-credentials.json');
+  fs.writeFileSync(tmp, process.env.GOOGLE_CREDENTIALS_JSON);
+  CREDENTIALS_PATH = tmp;
+}
 
 let sheetDataCache = [];
 let lastSync = null;
