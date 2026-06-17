@@ -246,6 +246,61 @@ app.get('/api/analytics/over-time', requireAuth, (req, res) => {
   res.json(data);
 });
 
+// Google Sheets integration
+const { google } = require('googleapis');
+const CREDENTIALS_PATH = path.join(__dirname, 'google-credentials.json');
+const SPREADSHEET_ID = '1nYvdZwZgqymw89waZXr1gyOVgPtmPN9CuAzQWx5y8Mg';
+
+let sheetDataCache = [];
+let lastSync = null;
+
+async function syncSheet() {
+  try {
+    const auth = new google.auth.GoogleAuth({
+      keyFilename: CREDENTIALS_PATH,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'A:J',
+    });
+    const rows = res.data.values || [];
+    const entries = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[0] || r[0].trim() === '' || r[0] === 'ETE - please don\'t delete') continue;
+      entries.push({
+        row: i + 1,
+        demo_status: (r[0] || '').trim(),
+        slot: (r[2] || '').trim(),
+        date: (r[6] || '').trim(),
+        time: (r[7] || '').trim(),
+        tutor_name: (r[8] || '').trim(),
+        student_name: (r[9] || '').trim(),
+      });
+    }
+    sheetDataCache = entries;
+    lastSync = new Date().toISOString();
+    console.log(`Sheet synced: ${entries.length} entries`);
+  } catch (err) {
+    console.error('Sheet sync error:', err.message);
+  }
+}
+
+app.get('/api/sheet-data', requireAuth, (req, res) => {
+  res.json({ entries: sheetDataCache, lastSync });
+});
+
+app.post('/api/sync-sheet', requireAuth, async (req, res) => {
+  await syncSheet();
+  res.json({ success: true, count: sheetDataCache.length, lastSync });
+});
+
+syncSheet();
+const SYNC_INTERVAL = 30000;
+setInterval(syncSheet, SYNC_INTERVAL);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

@@ -78,6 +78,26 @@
             <tbody id="tableBody"></tbody>
           </table>
         </div>
+
+        <div class="page-header" style="margin-top:40px">
+          <h2>Google Sheet — Demo Tracking</h2>
+          <p>Auto-refreshes every 30s. <span id="sheetSyncInfo"></span></p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student Name</th>
+                <th>Slot</th>
+                <th>Demo Status</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Tutor</th>
+              </tr>
+            </thead>
+            <tbody id="sheetTableBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -310,6 +330,34 @@
     });
 
     loadAssessments();
+
+    async function loadSheetData() {
+      try {
+        const res = await fetch('/api/sheet-data');
+        const data = await res.json();
+        document.getElementById('sheetSyncInfo').textContent = data.lastSync ? 'Last sync: ' + new Date(data.lastSync + 'Z').toLocaleTimeString() : '';
+        const tbody = document.getElementById('sheetTableBody');
+        if (!data.entries.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-secondary)">No sheet data found</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.entries.map(e => `
+          <tr>
+            <td><strong>${e.student_name || '-'}</strong></td>
+            <td>${e.slot || '-'}</td>
+            <td><span class="status-badge ${e.demo_status.toLowerCase().includes('done') ? 'Converted' : 'New'}">${e.demo_status}</span></td>
+            <td>${e.date || '-'}</td>
+            <td>${e.time || '-'}</td>
+            <td>${e.tutor_name || '-'}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load sheet data', err);
+      }
+    }
+
+    loadSheetData();
+    setInterval(loadSheetData, 30000);
   </script>
 </body>
 </html>
