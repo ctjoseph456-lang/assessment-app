@@ -3,6 +3,7 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const Database = require('better-sqlite3');
 const path = require('path');
+const SQLiteStore = require('better-sqlite3-session-store')(session);
 
 const app = express();
 const db = new Database(path.join(__dirname, 'data.db'));
@@ -63,6 +64,10 @@ if (!existingAdmin) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
+  store: new SQLiteStore({
+    client: db,
+    expired: { clear: true, intervalMs: 900000 }
+  }),
   secret: process.env.SESSION_SECRET || 'asmnt-secret-k3y-2026',
   resave: false,
   saveUninitialized: false,
@@ -463,3 +468,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
+
