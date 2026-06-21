@@ -63,12 +63,12 @@
                 <input type="text" id="name" placeholder="e.g. John Doe" required>
               </div>
               <div class="form-group">
-                <label for="email">Email *</label>
-                <input type="email" id="email" placeholder="e.g. tutor@email.com" required>
-              </div>
-              <div class="form-group">
-                <label for="password">Password *</label>
-                <input type="password" id="password" placeholder="Min 6 characters" minlength="6" required>
+                <label for="code">Tutor Code *</label>
+                <div style="display:flex;gap:8px">
+                  <input type="text" id="code" placeholder="e.g. JOH12" maxlength="5" required style="flex:1">
+                  <button type="button" class="btn btn-secondary" id="generateCode" style="white-space:nowrap">Generate</button>
+                </div>
+                <small style="color:var(--text-secondary)">5 characters: 3 letters (name start) + 2 digits</small>
               </div>
               <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-user-plus"></i> Add Tutor</button>
             </form>
@@ -81,7 +81,7 @@
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Email</th>
+                  <th>Code</th>
                   <th>Added</th>
                   <th style="width:60px"></th>
                 </tr>
@@ -130,7 +130,7 @@
         tbody.innerHTML = tutors.map(t => `
           <tr>
             <td><strong>${t.name}</strong></td>
-            <td style="color:var(--text-secondary)">${t.email}</td>
+            <td style="color:var(--text-secondary);font-family:monospace;font-weight:700;letter-spacing:1px">${t.code || '-'}</td>
             <td style="color:var(--text-secondary);font-size:0.8rem">${new Date(t.created_at + 'Z').toLocaleDateString()}</td>
             <td><button class="btn btn-danger btn-sm" onclick="deleteTutor(${t.id}, '${t.name}')"><i class="fas fa-trash"></i></button></td>
           </tr>
@@ -155,18 +155,29 @@
       }
     }
 
+    document.getElementById('generateCode').addEventListener('click', () => {
+      const name = document.getElementById('name').value.trim();
+      if (!name) {
+        document.getElementById('formMessage').innerHTML = '<div class="alert error">Enter a tutor name first</div>';
+        return;
+      }
+      const prefix = name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
+      const digits = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+      document.getElementById('code').value = prefix + digits;
+      document.getElementById('formMessage').innerHTML = '';
+    });
+
     document.getElementById('tutorForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+      const code = document.getElementById('code').value.trim().toUpperCase();
 
-      if (!name || !email || !password) {
-        document.getElementById('formMessage').innerHTML = '<div class="alert error">All fields are required</div>';
+      if (!name || !code) {
+        document.getElementById('formMessage').innerHTML = '<div class="alert error">Name and code are required</div>';
         return;
       }
-      if (password.length < 6) {
-        document.getElementById('formMessage').innerHTML = '<div class="alert error">Password must be at least 6 characters</div>';
+      if (code.length < 3) {
+        document.getElementById('formMessage').innerHTML = '<div class="alert error">Code must be at least 3 characters</div>';
         return;
       }
 
@@ -174,11 +185,11 @@
         const res = await fetch('/api/admin/tutors', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password })
+          body: JSON.stringify({ name, code })
         });
         const data = await res.json();
         if (data.success) {
-          document.getElementById('formMessage').innerHTML = '<div class="alert success">Tutor added successfully!</div>';
+          document.getElementById('formMessage').innerHTML = '<div class="alert success">Tutor added successfully! Code: ' + code + '</div>';
           document.getElementById('tutorForm').reset();
           loadTutors();
           setTimeout(() => document.getElementById('formMessage').innerHTML = '', 3000);
@@ -206,3 +217,4 @@
   </script>
 </body>
 </html>
+

@@ -16,6 +16,7 @@ db.exec(`
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     role TEXT DEFAULT 'teacher',
+    code TEXT UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -51,6 +52,21 @@ db.exec(`
 `);
 
 try { db.exec('ALTER TABLE assessments ADD COLUMN sheet_row INTEGER DEFAULT NULL'); } catch (e) {}
+try { db.exec('ALTER TABLE users ADD COLUMN code TEXT UNIQUE'); } catch (e) {}
+
+function generateTutorCode(name) {
+  const prefix = name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
+  const digits = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  return prefix + digits;
+}
+
+const tutorsWithoutCode = db.prepare("SELECT id, name FROM users WHERE role = 'teacher' AND (code IS NULL OR code = '')").all();
+for (const t of tutorsWithoutCode) {
+  let code;
+  do { code = generateTutorCode(t.name); } while (db.prepare('SELECT id FROM users WHERE code = ?').get(code));
+  db.prepare('UPDATE users SET code = ? WHERE id = ?').run(code, t.id);
+  console.log(`Generated code ${code} for tutor ${t.name}`);
+}
 
 const ADMIN_EMAIL = 'admin@ete.com';
 const ADMIN_PASSWORD = 'chessislive';
@@ -126,22 +142,26 @@ function requireAdmin(req, res, next) {
 }
 
 app.get('/api/admin/tutors', requireAuth, requireAdmin, (req, res) => {
-  const tutors = db.prepare("SELECT id, name, email, role, created_at FROM users WHERE role = 'teacher' ORDER BY created_at DESC").all();
+  const tutors = db.prepare("SELECT id, name, code, role, created_at FROM users WHERE role = 'teacher' ORDER BY created_at DESC").all();
   res.json(tutors);
 });
 
 app.post('/api/admin/tutors', requireAuth, requireAdmin, (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+    const { name, code } = req.body;
+    if (!name || !code) {
+      return res.status(400).json({ error: 'Name and code are required' });
     }
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (code.length < 3) {
+      return res.status(400).json({ error: 'Code must be at least 3 characters' });
+    }
+    const existing = db.prepare('SELECT id FROM users WHERE code = ?').get(code);
     if (existing) {
-      return res.status(409).json({ error: 'A user with this email already exists' });
+      return res.status(409).json({ error: 'This code is already in use' });
     }
-    const hash = bcrypt.hashSync(password, 10);
-    db.prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)').run(name, email, hash, 'teacher');
+    const dummyEmail = `tutor_${code}@internal.local`;
+    const dummyPass = bcrypt.hashSync('internal', 10);
+    db.prepare('INSERT INTO users (name, email, password, role, code) VALUES (?, ?, ?, ?, ?)').run(name, dummyEmail, dummyPass, 'teacher', code);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -155,6 +175,35 @@ app.delete('/api/admin/tutors/:id', requireAuth, requireAdmin, (req, res) => {
   if (tutor.role === 'admin') return res.status(403).json({ error: 'Cannot delete admin users' });
   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   res.json({ success: true });
+});
+
+function requireTutor(req, res, next) {
+  if (!req.session.userId || req.session.role !== 'teacher') {
+    return res.status(401).json({ error: 'Tutor access required' });
+  }
+  next();
+}
+
+app.post('/api/tutor/login', (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Code is required' });
+    const tutor = db.prepare("SELECT id, name, role FROM users WHERE code = ? AND role = 'teacher'").get(code);
+    if (!tutor) return res.status(401).json({ error: 'Invalid code' });
+    req.session.userId = tutor.id;
+    req.session.role = tutor.role;
+    req.session.name = tutor.name;
+    res.json({ success: true, name: tutor.name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/tutor/assessments', requireTutor, (req, res) => {
+  const tutorName = req.session.name;
+  const list = db.prepare("SELECT id, tutor_name, phone, slot, student_name, student_age, language, level, interest_level, status, date, time, created_at FROM assessments WHERE tutor_name = ? ORDER BY created_at DESC").all(tutorName);
+  res.json(list);
 });
 
 app.get('/api/slots', (req, res) => {
@@ -468,4 +517,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
+
 
