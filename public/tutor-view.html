@@ -297,12 +297,18 @@
           const btn = a
             ? `<button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem" data-row="${row}" onclick="viewAssessmentByRow(${row})">View</button>`
             : `<button class="btn btn-primary" style="padding:4px 10px;font-size:0.8rem" data-row="${row}" onclick="openForm(${row},'${esc(e.tutor_name)}','${esc(e.student_name)}','${esc(e.slot)}','${esc(e.date)}','${esc(e.time)}','${esc(e.phone)}','${esc(e.age)}','${esc(e.language)}')">Assess</button>`;
+          const conv = a?.status === 'Converted' || e.status === 'Converted' || e.demo_status === 'Converted';
+          const badge = conv
+            ? '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#cce5ff;color:#004085">Converted</span>'
+            : a
+              ? '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#d4edda;color:#155724">Demo Done</span>'
+              : '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#fff3cd;color:#856404">Pending</span>';
           return `<tr style="cursor:pointer" data-row="${row}">
             <td>${e.time || '-'}</td>
             <td>${e.date || '-'}</td>
             <td>${e.slot || '-'}</td>
             <td><strong>${e.student_name || '-'}</strong></td>
-            <td>${a ? (a.status === 'Converted' ? '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#cce5ff;color:#004085">Converted</span>' : '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#d4edda;color:#155724">Demo Done</span>') : '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#fff3cd;color:#856404">Pending</span>'}</td>
+            <td>${badge}</td>
             <td>${btn}</td>
           </tr>`;
         }).join('');
