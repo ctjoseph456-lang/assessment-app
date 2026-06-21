@@ -78,11 +78,12 @@
                 <th>Date</th>
                 <th>Slot</th>
                 <th>Student Name</th>
+                <th style="width:80px">Status</th>
                 <th style="width:90px">Action</th>
               </tr>
             </thead>
             <tbody id="tableBody">
-              <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-secondary)">Select your name and enter your code to see your assigned demos.</td></tr>
+              <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary)">Select your name and enter your code to see your assigned demos.</td></tr>
             </tbody>
           </table>
         </div>
@@ -259,7 +260,7 @@
       document.getElementById('codeSection').style.display = 'none';
       document.getElementById('tutorSelect').value = '';
       document.getElementById('codeInput').value = '';
-      document.getElementById('tableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-secondary)">Select your name and enter your code to see your assigned demos.</td></tr>';
+      document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary)">Select your name and enter your code to see your assigned demos.</td></tr>';
       document.getElementById('countBadge').textContent = '';
     };
 
@@ -272,7 +273,7 @@
       const tbody = document.getElementById('tableBody');
       const badge = document.getElementById('countBadge');
       if (!name) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-secondary)">Select your name and enter your code to see your assigned demos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary)">Select your name and enter your code to see your assigned demos.</td></tr>';
         badge.textContent = '';
         return;
       }
@@ -281,7 +282,7 @@
         const entries = await res.json();
         badge.textContent = entries.length + ' demo' + (entries.length === 1 ? '' : 's');
         if (!entries.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-secondary)">No demos assigned to you yet.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary)">No demos assigned to you yet.</td></tr>';
           return;
         }
         const assessmentPromises = entries.map(e =>
@@ -301,12 +302,13 @@
             <td>${e.date || '-'}</td>
             <td>${e.slot || '-'}</td>
             <td><strong>${e.student_name || '-'}</strong></td>
+            <td>${a ? '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#d4edda;color:#155724">Demo Done</span>' : '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:600;background:#fff3cd;color:#856404">Pending</span>'}</td>
             <td>${btn}</td>
           </tr>`;
         }).join('');
       } catch (err) {
         console.error('Failed to load demos', err);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-secondary)">Error loading demos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-secondary)">Error loading demos.</td></tr>';
       }
     }
 
