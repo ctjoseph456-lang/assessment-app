@@ -256,50 +256,16 @@
 
         <section class="content">
           <div class="page-header">
-            <h1>Assessment Analytics</h1>
-            <p id="lastUpdated">Aggregated from submitted demo assessments.</p>
-          </div>
-
-          <div class="kpi-grid" id="kpiGrid"></div>
-
-          <div class="chart-grid">
-            <div class="card">
-              <div class="card-header"><h3>By Level</h3></div>
-              <div class="card-body"><canvas id="levelChart"></canvas></div>
-            </div>
-            <div class="card">
-              <div class="card-header"><h3>By Language</h3></div>
-              <div class="card-body">
-                <canvas id="languageChart"></canvas>
-                <div id="languageCounts" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center"></div>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header"><h3>Interest Level</h3></div>
-              <div class="card-body"><canvas id="interestChart"></canvas></div>
-            </div>
-            <div class="card">
-              <div class="card-header"><h3>By Status</h3></div>
-              <div class="card-body"><canvas id="statusChart"></canvas></div>
-            </div>
+            <h1>Tutor Conversion Rankings</h1>
+            <p>Ranked by conversion rate (Converted ÷ Total Demos Done × 100).</p>
           </div>
 
           <div class="card full-width">
             <div class="card-header">
-              <h3>Tutor Conversion Ranking</h3>
+              <h3>Conversion Ranking</h3>
+              <span id="lastUpdated" style="font-size:0.8rem;color:var(--text-secondary)"></span>
             </div>
             <div class="card-body table-responsive" id="tutorRankingWrap"></div>
-          </div>
-
-          <div class="card full-width">
-            <div class="card-header">
-              <h3>All Submissions</h3>
-              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                <input type="date" id="dateFilter" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.85rem">
-                <input type="text" id="slotFilter" placeholder="Search slot..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.85rem;width:160px">
-              </div>
-            </div>
-            <div class="card-body table-responsive" id="submissionsTableWrap"></div>
           </div>
         </section>
       </main>
@@ -322,18 +288,6 @@
         window.location.href = 'index.html';
       });
 
-      const toggle = document.getElementById('analyticsThemeToggle');
-      const html = document.documentElement;
-      const saved = localStorage.getItem('theme') || 'light';
-      html.setAttribute('data-theme', saved);
-      toggle.innerHTML = saved === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-      toggle.addEventListener('click', () => {
-        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        toggle.innerHTML = next === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-      });
-
       const hamburger = document.getElementById('analyticsHamburger');
       const sidebar = document.getElementById('analyticsSidebar');
       hamburger.addEventListener('click', () => sidebar.classList.toggle('open'));
@@ -342,258 +296,63 @@
           sidebar.classList.remove('open');
       });
 
-      const COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316'];
-
-      function statusClass(s) {
-        const m = { 'New':'New','Contacted':'Contacted','CNR and Messaged':'CNR','Hot/Potential':'Hot','CNR 1':'CNR','CNR 2':'CNR','CNR 3':'CNR','Not Interested':'Not','Converted':'Converted' };
-        return m[s] || 'New';
-      }
-
-      function getColors() {
-        const s = getComputedStyle(document.body);
-        return {
-          text: s.getPropertyValue('--text-secondary').trim(),
-          border: s.getPropertyValue('--border').trim(),
-          primary: s.getPropertyValue('--primary').trim(),
-          success: s.getPropertyValue('--success').trim(),
-          danger: s.getPropertyValue('--danger').trim(),
-          warning: s.getPropertyValue('--warning').trim(),
-        };
-      }
-
-      let charts = {};
-      let allSubmissions = [];
-
-      function makeChart(id, type, labels, data, label, colors) {
-        const ctx = document.getElementById(id);
-        if (!ctx) return;
-        if (charts[id]) charts[id].destroy();
-        const c = getColors();
-        charts[id] = new Chart(ctx, {
-          type,
-          data: {
-            labels,
-            datasets: [{
-              label: label || '',
-              data,
-              backgroundColor: colors || c.primary + '33',
-              borderColor: c.primary,
-              borderWidth: type === 'bar' ? 2 : 0,
-              borderRadius: type === 'bar' ? 6 : 0,
-            }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-              legend: { display: type !== 'bar', labels: { color: c.text, usePointStyle: true, padding: 12 } },
-            },
-            scales: type === 'bar' ? {
-              y: { ticks: { color: c.text }, grid: { color: c.border } },
-              x: { ticks: { color: c.text }, grid: { display: false } },
-            } : undefined,
-          },
-        });
-      }
-
-      function makePie(id, labels, data, bgColors) {
-        const ctx = document.getElementById(id);
-        if (!ctx) return;
-        if (charts[id]) charts[id].destroy();
-        const c = getColors();
-        charts[id] = new Chart(ctx, {
-          type: 'doughnut',
-          data: { labels, datasets: [{ data, backgroundColor: bgColors || COLORS, borderWidth: 0 }] },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { position: 'bottom', labels: { color: c.text, padding: 12, usePointStyle: true } } },
-          },
-        });
-      }
-
-      function rebuildOnTheme() {
-        new MutationObserver(() => {
-          Object.keys(charts).forEach(k => { if (charts[k]) charts[k].destroy(); });
-          charts = {};
-          loadData();
-        }).observe(html, { attributes: true, attributeFilter: ['data-theme'] });
-      }
-
-      async function loadData() {
+      async function loadRanking() {
+        const wrap = document.getElementById('tutorRankingWrap');
+        const updated = document.getElementById('lastUpdated');
         try {
-          const [summary, overTime, list, sheetRes, tutorsRes] = await Promise.all([
-            fetch('/api/analytics/summary').then(r => r.json()),
-            fetch('/api/analytics/over-time').then(r => r.json()),
-            fetch('/api/assessments').then(r => r.json()),
+          const [sheetRes, tutorsRes] = await Promise.all([
             fetch('/api/sheet-data').then(r => r.json()),
             fetch('/api/admin/tutors').then(r => r.json()),
           ]);
+          const entries = sheetRes.entries || [];
+          updated.textContent = new Date().toLocaleString();
 
-          if (document.getElementById('lastUpdated'))
-            document.getElementById('lastUpdated').textContent = summary.total + ' assessment' + (summary.total !== 1 ? 's' : '') + ' on record. Updated just now.';
+          const ranking = tutorsRes.map(t => {
+            const tutorEntries = entries.filter(e => {
+              const sn = (e.tutor_name || '').toLowerCase();
+              const tn = t.name.toLowerCase();
+              return sn === tn || sn.startsWith(tn) || tn.startsWith(sn) || sn.includes(tn);
+            });
+            const converted = tutorEntries.filter(e => e.status === 'Converted' || e.demo_status === 'Converted').length;
+            const demoDone = tutorEntries.filter(e => e.status === 'Demo Done' || e.demo_status === 'Demo Done').length;
+            const total = demoDone + converted;
+            const pct = total > 0 ? Math.round((converted / total) * 100) : 0;
+            return { name: t.name, code: t.code, total, converted, pct };
+          }).filter(r => r.total > 0).sort((a, b) => b.pct - a.pct || b.total - a.total);
 
-          renderKpis(summary);
-          renderLevelChart(summary.byLevel);
-          renderLanguageChart(summary.byLanguage);
-          renderInterestChart(summary.byInterest);
-          renderStatusChart(summary.byStatus);
-          allSubmissions = list;
-          renderTable();
-          renderTutorRanking(sheetRes.entries || [], tutorsRes);
-          document.getElementById('dateFilter').addEventListener('change', renderTable);
-          document.getElementById('slotFilter').addEventListener('input', renderTable);
-        } catch (e) {
-          document.querySelector('.analytics-page .content').innerHTML =
-            '<div class="no-data"><i class="fas fa-database"></i><p>No data yet. Submit an assessment first.</p></div>';
-        }
-      }
+          if (!ranking.length) {
+            wrap.innerHTML = '<div class="no-data"><i class="fas fa-trophy"></i><p>No data yet. Complete some demos first.</p></div>';
+            return;
+          }
 
-      function renderKpis(summary) {
-        const grid = document.getElementById('kpiGrid');
-        const converted = (summary.byStatus || []).find(s => s.status === 'Converted');
-        grid.innerHTML = `
-          <div class="kpi-card">
-            <div class="kpi-icon total"><i class="fas fa-clipboard-check"></i></div>
-            <div class="kpi-info"><span class="kpi-label">Total Assessments</span><span class="kpi-value">${summary.total}</span></div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-icon avg-int"><i class="fas fa-star"></i></div>
-            <div class="kpi-info"><span class="kpi-label">Avg Interest</span><span class="kpi-value">${summary.avgInterest}</span></div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-icon level"><i class="fas fa-layer-group"></i></div>
-            <div class="kpi-info"><span class="kpi-label">Levels</span><span class="kpi-value">${summary.byLevel.length}</span></div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-icon converted"><i class="fas fa-check-circle"></i></div>
-            <div class="kpi-info"><span class="kpi-label">Converted</span><span class="kpi-value">${converted ? converted.count : 0}</span></div>
-          </div>
-        `;
-      }
-
-      function renderLevelChart(data) {
-        const labels = data.map(d => d.level);
-        const vals = data.map(d => d.count);
-        if (!labels.length) return makePie('levelChart', ['No data'], [1], ['#e5e7eb']);
-        makePie('levelChart', labels, vals, COLORS.slice(0, labels.length));
-      }
-
-      function renderLanguageChart(data) {
-        const labels = data.map(d => d.language);
-        const vals = data.map(d => d.count);
-        const total = vals.reduce((a, b) => a + b, 0);
-        const container = document.getElementById('languageCounts');
-        container.innerHTML = data.map(d => `
-          <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;font-size:0.8rem">
-            <strong>${d.language}</strong>
-            <span style="font-weight:700;color:var(--primary)">${d.count}</span>
-            <span style="color:var(--text-secondary);font-size:0.7rem">(${total ? Math.round(d.count/total*100) : 0}%)</span>
-          </span>
-        `).join('');
-        if (!labels.length) return makePie('languageChart', ['No data'], [1], ['#e5e7eb']);
-        makePie('languageChart', labels, vals);
-      }
-
-      function renderInterestChart(data) {
-        const labels = data.map(d => d.interest_level + '/5');
-        const vals = data.map(d => d.count);
-        const bg = ['#ef4444','#f97316','#f59e0b','#84cc16','#10b981'];
-        makeChart('interestChart', 'bar', labels, vals, 'Count', bg);
-      }
-
-      function renderStatusChart(data) {
-        const labels = data.map(d => d.status);
-        const vals = data.map(d => d.count);
-        if (!labels.length) return makePie('statusChart', ['No data'], [1], ['#e5e7eb']);
-        const statusColors = {
-          'New':'#6366f1','Contacted':'#8b5cf6','CNR and Messaged':'#ec4899','Hot/Potential':'#f59e0b',
-          'CNR 1':'#f97316','CNR 2':'#f97316','CNR 3':'#f97316','Not Interested':'#ef4444','Converted':'#10b981',
-        };
-        makePie('statusChart', labels, vals, labels.map(l => statusColors[l] || '#6b7280'));
-      }
-
-      function renderTutorRanking(entries, tutors) {
-        const wrap = document.getElementById('tutorRankingWrap');
-        const ranking = tutors.map(t => {
-          const tutorEntries = entries.filter(e => {
-            const sn = (e.tutor_name || '').toLowerCase();
-            const tn = t.name.toLowerCase();
-            return sn === tn || sn.startsWith(tn) || tn.startsWith(sn) || sn.includes(tn);
-          });
-          const converted = tutorEntries.filter(e => e.status === 'Converted' || e.demo_status === 'Converted').length;
-          const demoDone = tutorEntries.filter(e => e.status === 'Demo Done' || e.demo_status === 'Demo Done').length;
-          const total = demoDone + converted;
-          const pct = total > 0 ? Math.round((converted / total) * 100) : 0;
-          return { name: t.name, code: t.code, total, converted, pct };
-        }).filter(r => r.total > 0).sort((a, b) => b.pct - a.pct || b.total - a.total);
-
-        if (!ranking.length) {
-          wrap.innerHTML = '<div class="no-data"><i class="fas fa-trophy"></i><p>No data yet. Complete some demos first.</p></div>';
-          return;
-        }
-
-        const maxPct = ranking[0].pct || 1;
-        const rankColors = ['#fbbf24','#94a3b8','#d97706'];
-        wrap.innerHTML = `
-          <table>
-            <thead><tr><th>Rank</th><th>Tutor</th><th>Code</th><th>Demos Done</th><th>Converted</th><th>Conversion %</th></tr></thead>
-            <tbody>${ranking.map((r, i) => `
-              <tr>
-                <td style="font-weight:700;font-size:1.1rem;text-align:center">${i < 3 ? ['🥇','🥈','🥉'][i] : '#' + (i+1)}</td>
-                <td style="font-weight:600">${r.name}</td>
-                <td style="font-family:monospace;font-weight:700;color:var(--primary)">${r.code || '-'}</td>
-                <td style="text-align:center">${r.total}</td>
-                <td style="text-align:center">${r.converted}</td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span style="font-weight:700;font-size:0.9rem;min-width:44px">${r.pct}%</span>
-                    <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-                      <div style="height:100%;width:${(r.pct/maxPct)*100}%;background:${r.pct >= 50 ? '#10b981' : r.pct >= 25 ? '#f59e0b' : '#ef4444'};border-radius:4px;transition:width 0.6s ease"></div>
+          const maxPct = ranking[0].pct || 1;
+          wrap.innerHTML = `
+            <table>
+              <thead><tr><th>Rank</th><th>Tutor</th><th>Code</th><th>Demos Done</th><th>Converted</th><th>Conversion %</th></tr></thead>
+              <tbody>${ranking.map((r, i) => `
+                <tr>
+                  <td style="font-weight:700;font-size:1.1rem;text-align:center">${i < 3 ? ['🥇','🥈','🥉'][i] : '#' + (i+1)}</td>
+                  <td style="font-weight:600">${r.name}</td>
+                  <td style="font-family:monospace;font-weight:700;color:var(--primary)">${r.code || '-'}</td>
+                  <td style="text-align:center">${r.total}</td>
+                  <td style="text-align:center">${r.converted}</td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="font-weight:700;font-size:0.9rem;min-width:44px">${r.pct}%</span>
+                      <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                        <div style="height:100%;width:${(r.pct/maxPct)*100}%;background:${r.pct >= 50 ? '#10b981' : r.pct >= 25 ? '#f59e0b' : '#ef4444'};border-radius:4px;transition:width 0.6s ease"></div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-              </tr>
-            `).join('')}</tbody>
-          </table>`;
+                  </td>
+                </tr>
+              `).join('')}</tbody>
+            </table>`;
+        } catch (e) {
+          wrap.innerHTML = '<div class="no-data"><i class="fas fa-database"></i><p>Error loading data.</p></div>';
+        }
       }
 
-      function renderTable() {
-        const wrap = document.getElementById('submissionsTableWrap');
-        const dateVal = document.getElementById('dateFilter').value;
-        const slotVal = document.getElementById('slotFilter').value.toLowerCase().trim();
-        let data = allSubmissions;
-        if (dateVal) {
-          data = data.filter(a => {
-            const d = new Date(a.created_at + 'Z');
-            return d.toISOString().slice(0, 10) === dateVal;
-          });
-        }
-        if (slotVal) {
-          data = data.filter(a => (a.slot || '').toLowerCase().includes(slotVal));
-        }
-        if (!data.length) {
-          wrap.innerHTML = '<div class="no-data"><i class="fas fa-inbox"></i><p>No submissions match the filters.</p></div>';
-          return;
-        }
-        wrap.innerHTML = `
-          <table>
-            <thead><tr><th>Student</th><th>Slot</th><th>Level</th><th>Interest</th><th>Status</th><th>Date</th></tr></thead>
-            <tbody>${data.map(a => `
-              <tr>
-                <td><strong>${a.student_name}</strong></td>
-                <td>${a.slot}</td>
-                <td><span class="status-badge ${a.level}">${a.level}</span></td>
-                <td>${'★'.repeat(a.interest_level || 0)}${'☆'.repeat(5 - (a.interest_level || 0))}</td>
-                <td><span class="status-badge ${statusClass(a.status)}">${a.status}</span></td>
-                <td style="color:var(--text-secondary);font-size:0.8rem">${new Date(a.created_at + 'Z').toLocaleDateString()}</td>
-              </tr>
-            `).join('')}</tbody>
-          </table>`;
-      }
-
-      rebuildOnTheme();
-      loadData();
+      loadRanking();
     });
   </script>
 </body>
