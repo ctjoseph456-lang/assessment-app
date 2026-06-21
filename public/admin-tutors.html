@@ -174,27 +174,29 @@
                 <th>Date</th>
                 <th>Time</th>
                 <th>Age</th>
-                <th>Status</th>
+                <th>Demo Status</th>
+                <th>Follow Up</th>
                 <th style="width:140px">Update</th>
               </tr>
             </thead>
             <tbody>${entries.map(e => {
-              const statusColors = { 'New':'#6b7280', 'Contacted':'#f59e0b', 'Demo Done':'#22c55e', 'Demo Rescheduled':'#3b82f6', 'Demo Cancelled':'#ef4444', 'Demo Not Done':'#ef4444', 'Converted':'#8b5cf6', 'Not Interested':'#6b7280' };
-              const sheetStatus = e.demo_status || 'New';
-              const localStatus = e.status || 'New';
-              const displayStatus = localStatus !== 'New' ? localStatus : sheetStatus;
-              const color = statusColors[displayStatus] || '#6b7280';
+              const demoBadgeColors = { 'Demo Not Done':'#ef4444', 'Demo Done':'#22c55e', 'Converted':'#8b5cf6' };
+              const demoColor = demoBadgeColors[e.demo_status] || '#6b7280';
+              const followUpStatus = e.status || 'New';
+              const followUpColors = { 'New':'#6b7280', 'In Conversation':'#f59e0b', 'CNR':'#ef4444', 'Hot':'#22c55e', 'Converted':'#8b5cf6' };
+              const followUpColor = followUpColors[followUpStatus] || '#6b7280';
               return `<tr>
                 <td><strong>${e.student_name || '-'}</strong></td>
                 <td>${e.slot || '-'}</td>
                 <td>${e.date || '-'}</td>
                 <td>${e.time || '-'}</td>
                 <td>${e.age || '-'}</td>
-                <td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;color:white;background:${color}">${displayStatus}</span></td>
+                <td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;color:white;background:${demoColor}">${e.demo_status || 'New'}</span></td>
+                <td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;color:white;background:${followUpColor}">${followUpStatus}</span></td>
                 <td>
                   <select class="status-select" data-row="${e.row}">
-                    ${['New','Contacted','Demo Done','Demo Rescheduled','Demo Cancelled','Demo Not Done','Converted','Not Interested'].map(s =>
-                      `<option value="${s}" ${localStatus === s ? 'selected' : ''}>${s}</option>`
+                    ${['New','In Conversation','CNR','Hot','Converted'].map(s =>
+                      `<option value="${s}" ${followUpStatus === s ? 'selected' : ''}>${s}</option>`
                     ).join('')}
                   </select>
                   <button class="btn btn-sm status-update-btn" onclick="updateDemoStatus(${e.row}, this)">Update</button>

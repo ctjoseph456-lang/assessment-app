@@ -50,6 +50,15 @@
           <input type="date" id="dateFilter" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.85rem">
           <label style="font-size:0.85rem;color:var(--text-secondary);margin-left:8px">Slot:</label>
           <input type="text" id="slotFilter" placeholder="Search slot..." style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.85rem;width:140px">
+          <label style="font-size:0.85rem;color:var(--text-secondary);margin-left:8px">Follow Up:</label>
+          <select id="followUpFilter" style="padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text)">
+            <option value="">All</option>
+            <option value="New">New</option>
+            <option value="In Conversation">In Conversation</option>
+            <option value="CNR">CNR</option>
+            <option value="Hot">Hot</option>
+            <option value="Converted">Converted</option>
+          </select>
         </div>
         <div class="table-wrap">
           <table>
@@ -62,7 +71,7 @@
                 <th>Age</th>
                 <th>Language</th>
                 <th>Demo Status</th>
-                <th>Status</th>
+                <th>Follow Up</th>
                 <th>Tutor</th>
                 <th>Agent</th>
                 <th>Phone</th>
@@ -112,6 +121,7 @@
     document.getElementById('tutorFilter').addEventListener('change', loadSheetData);
     document.getElementById('dateFilter').addEventListener('change', renderFilteredSheet);
     document.getElementById('slotFilter').addEventListener('input', renderFilteredSheet);
+    document.getElementById('followUpFilter').addEventListener('change', renderFilteredSheet);
 
     document.getElementById('sheetTableBody').addEventListener('click', async (e) => {
       const tr = e.target.closest('tr[data-row]');
@@ -178,6 +188,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
         });
+        loadSheetData();
       } catch (err) {
         console.error(err);
       }
@@ -211,9 +222,11 @@
     function renderFilteredSheet() {
       const dateVal = document.getElementById('dateFilter').value;
       const slotVal = document.getElementById('slotFilter').value.toLowerCase().trim();
+      const followUpVal = document.getElementById('followUpFilter').value;
       const entries = cachedSheetData.entries.filter(e => {
         if (dateVal && normalizeDate(e.date) !== dateVal) return false;
         if (slotVal && !(e.slot || '').toLowerCase().includes(slotVal)) return false;
+        if (followUpVal && (e.status || '') !== followUpVal) return false;
         return true;
       });
       const tbody = document.getElementById('sheetTableBody');
@@ -221,7 +234,7 @@
         tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text-secondary)">No sheet data found</td></tr>';
         return;
       }
-      const statuses = ['New', 'Contacted', 'Demo Done', 'Demo Rescheduled', 'Demo Cancelled', 'Demo Not Done', 'Converted', 'Not Interested'];
+      const followUpOptions = ['New', 'In Conversation', 'CNR', 'Hot', 'Converted'];
       tbody.innerHTML = entries.map(e => `
         <tr data-row="${e.row}" style="cursor:pointer">
           <td>${e.date || '-'}</td>
@@ -231,7 +244,7 @@
           <td>${e.age || '-'}</td>
           <td>${e.language || '-'}</td>
           <td><span class="status-badge ${(() => { const s = e.demo_status.toLowerCase(); if (s.includes('not done')) return 'DemoNotDone'; if (s.includes('done')) return 'DemoDone'; if (s === 'converted') return 'Converted'; return 'New'; })()}">${e.demo_status}</span></td>
-          <td><select class="sheet-status-select" data-row="${e.row}" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.8rem;background:var(--surface);color:var(--text)" onclick="event.stopPropagation()">${statuses.map(s => `<option value="${s}" ${s === e.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+          <td><select class="sheet-status-select" data-row="${e.row}" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.8rem;background:var(--surface);color:var(--text)" onclick="event.stopPropagation()">${followUpOptions.map(s => `<option value="${s}" ${s === e.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
           <td>${e.tutor_name || '-'}</td>
           <td>${e.agent_name || '-'}</td>
           <td>${e.phone || '-'}</td>
