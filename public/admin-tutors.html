@@ -158,7 +158,7 @@
         tbody.innerHTML = tutors.map(t => `
           <tr>
             <td><strong>${t.name}</strong></td>
-            <td style="color:var(--text-secondary);font-family:monospace;font-weight:700;letter-spacing:1px">${t.code || '-'}</td>
+            <td style="color:var(--text-secondary);font-family:monospace;font-weight:700;letter-spacing:1px;cursor:pointer" onclick="viewTutorDemos('${t.name.replace(/'/g, "\\'")}')" title="Click to view demos">${t.code || '-'}</td>
             <td style="color:var(--text-secondary);font-size:0.8rem">${new Date(t.created_at + 'Z').toLocaleDateString()}</td>
             <td><button class="btn btn-sm" onclick="viewTutorDemos('${t.name.replace(/'/g, "\\'")}')" title="View Demos"><i class="fas fa-eye"></i></button> <button class="btn btn-danger btn-sm" onclick="deleteTutor(${t.id}, '${t.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></td>
           </tr>
@@ -246,18 +246,21 @@
         empty.style.display = 'none';
         tbody.innerHTML = entries.map(e => {
           const statusColors = { 'New':'#6b7280', 'Contacted':'#f59e0b', 'Demo Done':'#22c55e', 'Demo Rescheduled':'#3b82f6', 'Demo Cancelled':'#ef4444', 'Demo Not Done':'#ef4444', 'Converted':'#8b5cf6', 'Not Interested':'#6b7280' };
-          const color = statusColors[e.status] || '#6b7280';
+          const sheetStatus = e.demo_status || 'New';
+          const localStatus = e.status || 'New';
+          const displayStatus = localStatus !== 'New' ? localStatus : sheetStatus;
+          const color = statusColors[displayStatus] || '#6b7280';
           return `<tr>
             <td><strong>${e.student_name || '-'}</strong></td>
             <td>${e.slot || '-'}</td>
             <td>${e.date || '-'}</td>
             <td>${e.time || '-'}</td>
             <td>${e.age || '-'}</td>
-            <td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;color:white;background:${color}">${e.status || 'New'}</span></td>
+            <td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;color:white;background:${color}">${displayStatus}</span></td>
             <td>
               <select class="status-select" data-row="${e.row}">
                 ${['New','Contacted','Demo Done','Demo Rescheduled','Demo Cancelled','Demo Not Done','Converted','Not Interested'].map(s =>
-                  `<option value="${s}" ${e.status === s ? 'selected' : ''}>${s}</option>`
+                  `<option value="${s}" ${localStatus === s ? 'selected' : ''}>${s}</option>`
                 ).join('')}
               </select>
               <button class="btn btn-sm status-update-btn" onclick="updateDemoStatus(${e.row}, this)">Update</button>
