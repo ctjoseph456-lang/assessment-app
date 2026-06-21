@@ -10,15 +10,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <style>
-    .tutor-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
-    .tutor-form-card, .tutor-list-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; }
-    .tutor-form-card h2, .tutor-list-card h2 { font-size:1.1rem; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+    .content-area { max-width:1000px; margin:0 auto; }
+    .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+    .card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; }
+    .card h2 { font-size:1.1rem; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); }
     .tutor-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
     .tutor-table th { text-align:left; padding:10px 12px; font-weight:600; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); border-bottom:2px solid var(--border); }
     .tutor-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
     .tutor-table tr:hover { background:var(--surface-hover); }
     .btn-sm { padding:6px 14px; font-size:0.8rem; }
     .empty-state { text-align:center; padding:40px; color:var(--text-secondary); }
+    .tutor-name-cell { font-weight:600; }
+    .code-cell { font-family:monospace; font-weight:700; letter-spacing:1px; color:var(--primary); }
+    .stat-cell { font-weight:600; text-align:center; }
+    .stat-demo { color:#155724; }
+    .stat-converted { color:#004085; }
+    .status-select { padding:4px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.75rem; background:var(--surface); color:var(--text); cursor:pointer; }
+    .status-update-btn { padding:4px 10px; font-size:0.75rem; margin-left:4px; }
   </style>
 </head>
 <body>
@@ -50,23 +58,11 @@
       <div class="content-area">
         <div class="page-header">
           <h1>Tutor Management</h1>
-          <p>Add, view, and manage tutor accounts.</p>
+          <p>View all tutors, their codes, and demo statistics.</p>
         </div>
 
-        <div class="tutor-grid">
-          <div class="tutor-form-card">
-            <h2>Add New Tutor</h2>
-            <form id="tutorForm">
-              <div class="form-group">
-                <label for="name">Tutor Name *</label>
-                <input type="text" id="name" placeholder="e.g. John Doe" required>
-              </div>
-              <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-user-plus"></i> Add Tutor</button>
-            </form>
-            <div id="formMessage" style="margin-top:12px"></div>
-          </div>
-
-          <div class="tutor-list-card">
+        <div class="stats-grid">
+          <div class="card">
             <h2>Select Tutor</h2>
             <select id="tutorDropdown" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:1rem;margin-bottom:16px">
               <option value="">— Choose a tutor —</option>
@@ -74,14 +70,14 @@
             <div id="demosInline"></div>
           </div>
 
-          <div class="tutor-list-card">
-            <h2>All Tutors & Codes</h2>
+          <div class="card">
+            <h2>All Tutors & Stats</h2>
             <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
-              <table class="tutor-table" style="min-width:300px">
+              <table class="tutor-table" style="min-width:450px">
                 <thead>
-                  <tr><th>#</th><th>Name</th><th>Code</th></tr>
+                  <tr><th>#</th><th>Name</th><th>Code</th><th style="text-align:center">Demos Done</th><th style="text-align:center">Converted</th></tr>
                 </thead>
-                <tbody id="tutorCodeTableBody"></tbody>
+                <tbody id="tutorStatTableBody"></tbody>
               </table>
             </div>
           </div>
@@ -91,12 +87,8 @@
   </div>
 
   <div id="statusToast" style="position:fixed;bottom:20px;right:20px;background:#22c55e;color:white;padding:10px 20px;border-radius:8px;font-size:0.85rem;display:none;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2)"></div>
-  <style>
-    .status-select { padding:4px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.75rem; background:var(--surface); color:var(--text); cursor:pointer; }
-    .status-update-btn { padding:4px 10px; font-size:0.75rem; margin-left:4px; }
-  </style>
+
   <script>
-    // Check auth & role
     (async () => {
       try {
         const res = await fetch('/api/me');
@@ -115,24 +107,41 @@
       }
     })();
 
-    async function loadTutors() {
-      try {
-        const res = await fetch('/api/admin/tutors');
-        const tutors = await res.json();
-        const sorted = tutors.sort((a, b) => a.name.localeCompare(b.name));
-        const select = document.getElementById('tutorDropdown');
-        select.innerHTML = '<option value="">— Choose a tutor —</option>' +
-          sorted.map(t =>
-            `<option value="${t.name.replace(/"/g, '&quot;')}">${t.name}</option>`
-          ).join('');
+    async function loadAll() {
+      const [tutorsRes, sheetRes] = await Promise.all([
+        fetch('/api/admin/tutors'),
+        fetch('/api/sheet-data')
+      ]);
+      const tutors = await tutorsRes.json();
+      const sheetData = await sheetRes.json();
+      const entries = sheetData.entries || [];
 
-        const tbody = document.getElementById('tutorCodeTableBody');
-        tbody.innerHTML = sorted.map((t, i) =>
-          `<tr><td>${i + 1}</td><td>${t.name}</td><td style="font-family:monospace;font-weight:700;letter-spacing:1px;color:var(--primary)">${t.code || '-'}</td></tr>`
+      const sorted = tutors.sort((a, b) => a.name.localeCompare(b.name));
+
+      const select = document.getElementById('tutorDropdown');
+      select.innerHTML = '<option value="">— Choose a tutor —</option>' +
+        sorted.map(t =>
+          `<option value="${t.name.replace(/"/g, '&quot;')}">${t.name}</option>`
         ).join('');
-      } catch (err) {
-        console.error(err);
-      }
+
+      const tbody = document.getElementById('tutorStatTableBody');
+      tbody.innerHTML = sorted.map((t, i) => {
+        const tutorEntries = entries.filter(e => {
+          const sn = (e.tutor_name || '').toLowerCase();
+          const tn = t.name.toLowerCase();
+          return sn === tn || sn.startsWith(tn) || tn.startsWith(sn) || sn.includes(tn);
+        });
+        const converted = tutorEntries.filter(e => e.status === 'Converted' || e.demo_status === 'Converted').length;
+        const demoDone = tutorEntries.filter(e => e.status === 'Demo Done' || e.demo_status === 'Demo Done').length;
+        const totalDone = demoDone + converted;
+        return `<tr>
+          <td>${i + 1}</td>
+          <td class="tutor-name-cell">${t.name}</td>
+          <td class="code-cell">${t.code || '-'}</td>
+          <td class="stat-cell stat-demo">${totalDone}</td>
+          <td class="stat-cell stat-converted">${converted}</td>
+        </tr>`;
+      }).join('');
     }
 
     document.getElementById('tutorDropdown').addEventListener('change', function() {
@@ -144,50 +153,6 @@
       viewTutorDemos(name);
     });
 
-    async function deleteTutor(id, name) {
-      if (!confirm('Delete tutor "' + name + '"? This cannot be undone.')) return;
-      try {
-        const res = await fetch('/api/admin/tutors/' + id, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-          loadTutors();
-        } else {
-          alert(data.error || 'Failed to delete');
-        }
-      } catch (err) {
-        alert('Server error');
-      }
-    }
-
-    document.getElementById('tutorForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = document.getElementById('name').value.trim();
-      if (!name) {
-        document.getElementById('formMessage').innerHTML = '<div class="alert error">Name is required</div>';
-        return;
-      }
-      const code = String(Math.abs(name.split('').reduce((h,c) => ((h<<5)-h)+c.charCodeAt(0), 0) % 9998 + 1)).padStart(4, '0');
-      try {
-        const res = await fetch('/api/admin/tutors', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, code })
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('formMessage').innerHTML = '<div class="alert success">Tutor added successfully! Code: ' + code + '</div>';
-          document.getElementById('tutorForm').reset();
-          loadTutors();
-          setTimeout(() => document.getElementById('formMessage').innerHTML = '', 3000);
-        } else {
-          document.getElementById('formMessage').innerHTML = '<div class="alert error">' + (data.error || 'Failed to add tutor') + '</div>';
-        }
-      } catch (err) {
-        document.getElementById('formMessage').innerHTML = '<div class="alert error">Server error</div>';
-      }
-    });
-
-    // Demo viewer
     async function viewTutorDemos(name) {
       const container = document.getElementById('demosInline');
       container.innerHTML = '<p style="color:var(--text-secondary)">Loading...</p>';
@@ -263,6 +228,7 @@
           setTimeout(() => toast.style.display = 'none', 2000);
           const selectEl = document.getElementById('tutorDropdown');
           viewTutorDemos(selectEl.value);
+          loadAll();
         } else {
           alert(data.error || 'Failed');
           btn.disabled = false;
@@ -275,20 +241,17 @@
       }
     }
 
-    // Hamburger
     document.getElementById('hamburger').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('open');
     });
 
-    // Logout
     document.getElementById('logoutLink').addEventListener('click', async (e) => {
       e.preventDefault();
       await fetch('/api/logout', { method: 'POST' });
       window.location.href = 'index.html';
     });
 
-    loadTutors();
+    loadAll();
   </script>
 </body>
 </html>
-
