@@ -352,7 +352,7 @@ app.post('/api/assessments', (req, res) => {
       updateSheetRow(sheet_row, 'Demo Done');
       db.prepare('INSERT INTO sheet_statuses (row_number, status) VALUES (?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP').run(sheet_row, 'Demo Done', 'Demo Done');
       const entry = sheetDataCache.find(e => e.row === parseInt(sheet_row));
-      if (entry) entry.status = 'Demo Done';
+      if (entry) { entry.status = 'Demo Done'; entry.demo_status = 'Demo Done'; }
     } else {
       appendToSheet({
         demo_status: 'Demo Done',
@@ -580,13 +580,24 @@ app.patch('/api/sheet-data/:row/status', requireAuth, async (req, res) => {
   const { status } = req.body;
   const valid = ['New', 'In Conversation', 'CNR', 'Hot', 'Converted'];
   if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status' });
-  db.prepare('INSERT INTO sheet_statuses (row_number, status) VALUES (?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP').run(req.params.row, status, status);
-  const entry = sheetDataCache.find(e => e.row === parseInt(req.params.row));
+  const row = parseInt(req.params.row);
+  const entry = sheetDataCache.find(e => e.row === row);
+  const wasConverted = entry && entry.status === 'Converted';
+  db.prepare('INSERT INTO sheet_statuses (row_number, status) VALUES (?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP').run(row, status, status);
   if (entry) entry.status = status;
   if (status === 'Converted') {
     if (entry) entry.demo_status = 'Converted';
     try {
-      await updateSheetRow(req.params.row, 'Converted');
+      await updateSheetRow(row, 'Converted');
+    } catch (e) {
+      console.error('Failed to update sheet:', e.message);
+    }
+  } else if (wasConverted) {
+    const assessment = db.prepare('SELECT id FROM assessments WHERE sheet_row = ?').get(row);
+    const revertStatus = assessment ? 'Demo Done' : 'New';
+    if (entry) entry.demo_status = revertStatus;
+    try {
+      await updateSheetRow(row, revertStatus);
     } catch (e) {
       console.error('Failed to update sheet:', e.message);
     }
