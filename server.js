@@ -77,6 +77,32 @@ if (!existingAdmin) {
   console.log('Default admin seeded: admin@ete.com / chessislive');
 }
 
+const INITIAL_TUTORS = [
+  "Madhumita","Saya M S","Abhishek","Thanseeha","Satheesh P","Vikrant Jaglan",
+  "Nithish kumar","Nihar Hareesh","Gagan Bharadwaj","Ashitha KM","Vishnu cg",
+  "Jishna","lakshya","Prashanth Reddy","ANAND J","Yathin Pradeep",
+  "Afreen Tabassum","Selin","Rakshit Batra","Malavika R","Muhammad Bilal",
+  "Ajaya Bose","Latheef","Vishnu","Varsha","Surya","Ann","ALEENA","ayswarya",
+  "Haebel","Yadu","ANAND","AKHILJITH KC","Gaurav","ARYAN","amit","kessia",
+  "malavika","Rejith","Gopakumar","Yasar","Safvan","Salman","Shivangi","Suhail",
+  "Bhagya","Mishail","Joseph","Keerthana","Theertha","Nizar FT","Anjana SG",
+  "Ebin FT","Athul","Abhijith","Arijith","Manu","Adesh","U.Abhijith",
+  "Abhishek T.M","Karan","Sreehari","Devika","Alan ET"
+];
+
+const existingTutorCount = db.prepare("SELECT COUNT(*) AS cnt FROM users WHERE role = 'teacher'").get().cnt;
+if (existingTutorCount === 0) {
+  const insert = db.prepare('INSERT INTO users (name, role, code) VALUES (?, ?, ?)');
+  const allCodes = new Set();
+  for (const name of INITIAL_TUTORS) {
+    let code;
+    do { code = generateTutorCode(name); } while (allCodes.has(code));
+    allCodes.add(code);
+    insert.run(name, 'teacher', code);
+  }
+  console.log(`Seeded ${INITIAL_TUTORS.length} initial tutors with codes`);
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
