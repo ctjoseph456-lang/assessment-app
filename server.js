@@ -572,22 +572,27 @@ async function appendToSheet(data) {
   }
 }
 
+let assessmentSheetTab = 'Sheet1';
+
 async function initAssessmentSheet() {
   try {
     const sheets = getSheetsClient();
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: ASSESSMENTS_SHEET_ID });
+    assessmentSheetTab = meta.data.sheets?.[0]?.properties?.title || 'Sheet1';
+    const range = `'${assessmentSheetTab}'!A1:R1`;
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: ASSESSMENTS_SHEET_ID,
-      range: 'Sheet1!A1:R1',
+      range,
     });
     if (!res.data.values || !res.data.values[0] || !res.data.values[0][0]) {
       const headers = ['Timestamp', 'Tutor Name', 'Phone', 'Student Name', 'Age', 'Language', 'Level', 'Slot', 'Date', 'Time', 'Interest Level', 'Feedback', 'Topics Known', 'Topics Covered', 'Start Topic', 'Revision Topics', 'Additional Remarks', 'Sheet Row'];
       await sheets.spreadsheets.values.update({
         spreadsheetId: ASSESSMENTS_SHEET_ID,
-        range: 'Sheet1!A1:R1',
+        range,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [headers] },
       });
-      console.log('Assessment sheet initialized with headers');
+      console.log(`Assessment sheet initialized (tab: ${assessmentSheetTab})`);
     }
   } catch (err) {
     console.error('Assessment sheet init error:', err.message);
@@ -619,7 +624,7 @@ async function appendAssessmentToSheet(data) {
     ]];
     await sheets.spreadsheets.values.append({
       spreadsheetId: ASSESSMENTS_SHEET_ID,
-      range: 'Sheet1!A:R',
+      range: `'${assessmentSheetTab}'!A:R`,
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values },
