@@ -75,19 +75,61 @@ function generateTutorCode(name, existingCodes = new Set()) {
   return '0001';
 }
 
+const TUTOR_NAME_ALIASES = {
+  'sumith': 'Sumith',
+  'sumit': 'Sumith',
+  'sumith rajan': 'Sumith',
+  'sumith raj': 'Sumith',
+  'malavika': 'Malavika',
+  'malavika r': 'Malavika',
+  'yatin': 'Yatin',
+  'yathin': 'Yatin',
+  'yathin pradeep': 'Yatin',
+  'yatin pradeep': 'Yatin',
+};
+
+function normalizeTutorName(raw) {
+  const key = (raw || '').trim().toLowerCase();
+  if (!key || key.length < 3) return null;
+  if (key === 'su') return null;
+  return TUTOR_NAME_ALIASES[key] || raw.trim();
+}
+
 function syncTutorsFromSheet() {
   const names = [...new Set(sheetDataCache.map(e => e.tutor_name).filter(Boolean))];
-  const existing = new Set(db.prepare("SELECT name, code FROM users WHERE role = 'teacher'").all().map(r => r.name.trim().toLowerCase()));
-  const existingCodes = new Set(db.prepare("SELECT code FROM users WHERE role = 'teacher' AND code IS NOT NULL").all().map(r => r.code));
+  const allTeachers = db.prepare("SELECT id, name, code FROM users WHERE role = 'teacher'").all();
+  const existingByName = new Map();
+  const canonicalToIds = new Map();
+  for (const t of allTeachers) {
+    const key = t.name.trim().toLowerCase();
+    const canon = TUTOR_NAME_ALIASES[key] || t.name.trim();
+    existingByName.set(key, t);
+    if (!canonicalToIds.has(canon)) canonicalToIds.set(canon, []);
+    canonicalToIds.get(canon).push(t);
+  }
+  const existingCodes = new Set(allTeachers.filter(t => t.code).map(t => t.code));
   const dummyPass = bcrypt.hashSync('tutor123', 10);
   for (const name of names) {
     const key = name.trim().toLowerCase();
-    if (!key || existing.has(key)) continue;
+    if (!key || existingByName.has(key)) continue;
     const code = generateTutorCode(name, existingCodes);
     const email = key.replace(/[^a-z0-9]/g, '') + '@tutor.local';
     db.prepare('INSERT INTO users (name, email, password, role, code) VALUES (?, ?, ?, ?, ?)').run(name.trim(), email, dummyPass, 'teacher', code);
-    existing.add(key);
+    existingByName.set(key, { name: name.trim() });
     console.log(`Auto-created tutor from sheet: ${name.trim()} -> code ${code}`);
+  }
+  for (const [canonical, ids] of canonicalToIds) {
+    if (ids.length > 1) {
+      const keep = ids[0];
+      for (let i = 1; i < ids.length; i++) {
+        const dup = ids[i];
+        console.log(`Merging duplicate tutor: ${dup.name} (id=${dup.id}) -> ${canonical} (id=${keep.id})`);
+        db.prepare('UPDATE assessments SET tutor_name = ? WHERE tutor_name = ?').run(canonical, dup.name);
+        db.prepare('DELETE FROM users WHERE id = ?').run(dup.id);
+        existingByName.delete(dup.name.trim().toLowerCase());
+      }
+      db.prepare('UPDATE users SET name = ? WHERE id = ?').run(canonical, keep.id);
+    }
   }
 }
 
@@ -200,7 +242,17 @@ function requireAdmin(req, res, next) {
 
 app.get('/api/admin/tutors', requireAuth, requireAdmin, (req, res) => {
   const tutors = db.prepare("SELECT id, name, code, role, created_at FROM users WHERE role = 'teacher' ORDER BY created_at DESC").all();
-  res.json(tutors);
+  const seen = new Set();
+  const deduped = [];
+  for (const t of tutors) {
+    const canon = TUTOR_NAME_ALIASES[t.name.trim().toLowerCase()] || t.name.trim();
+    const key = canon.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    t.name = canon;
+    deduped.push(t);
+  }
+  res.json(deduped);
 });
 
 app.post('/api/admin/tutors', requireAuth, requireAdmin, (req, res) => {
@@ -265,7 +317,16 @@ app.get('/api/tutor/assessments', requireTutor, (req, res) => {
 
 app.get('/api/tutor-names', (req, res) => {
   const tutors = db.prepare("SELECT name FROM users WHERE role = 'teacher' ORDER BY name ASC").all();
-  res.json(tutors.map(t => t.name));
+  const seen = new Set();
+  const deduped = [];
+  for (const t of tutors) {
+    const canon = TUTOR_NAME_ALIASES[t.name.trim().toLowerCase()] || t.name.trim();
+    const key = canon.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(canon);
+  }
+  res.json(deduped);
 });
 
 app.get('/api/slots', (req, res) => {
@@ -579,6 +640,9 @@ async function syncSheet() {
       const r = rows[i];
       if (r[0] === 'ETE - please don\'t delete' || ((!r[0] || r[0].trim() === '') && (!r[8] || r[8].trim() === ''))) continue;
       if (i + 1 < 2904) continue;
+      const rawName = (r[8] || '').trim();
+      const normalized = normalizeTutorName(rawName);
+      if (!normalized) continue;
       const statusRow = db.prepare('SELECT status FROM sheet_statuses WHERE row_number = ?').get(i + 1);
       entries.push({
         row: i + 1,
@@ -586,7 +650,7 @@ async function syncSheet() {
         slot: (r[2] || '').trim(),
         date: (r[6] || '').trim(),
         time: (r[7] || '').trim(),
-        tutor_name: (r[8] || '').trim(),
+        tutor_name: normalized,
         student_name: (r[9] || '').trim(),
         age: (r[11] || '').trim(),
         language: (r[12] || '').trim(),
@@ -610,7 +674,7 @@ app.get('/api/sheet-tutors', (req, res) => {
 });
 
 app.get('/api/sheet-tutor/:name', (req, res) => {
-  const tutorName = decodeURIComponent(req.params.name).trim().toLowerCase();
+  const tutorName = (normalizeTutorName(decodeURIComponent(req.params.name)) || '').toLowerCase();
   let entries = sheetDataCache.filter(e => e.tutor_name.toLowerCase() === tutorName);
   if (!entries.length) {
     const firstWord = tutorName.split(/\s+/)[0];
