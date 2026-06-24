@@ -7,11 +7,15 @@ const SQLiteStore = require('better-sqlite3-session-store')(session);
 
 const app = express();
 const fs = require('fs');
-const DB_PATH = process.env.DB_PATH || (process.env.RAILWAY_SERVICE_ID ? '/data/data.db' : path.join(__dirname, 'data.db'));
-const oldDb = path.join(__dirname, 'data.db');
-if (DB_PATH !== oldDb && !fs.existsSync(DB_PATH) && fs.existsSync(oldDb)) {
-  fs.copyFileSync(oldDb, DB_PATH);
-  console.log('Migrated existing data.db to', DB_PATH);
+const LOCAL_PATH = path.join(__dirname, 'data.db');
+let DB_PATH = process.env.DB_PATH || LOCAL_PATH;
+try {
+  fs.accessSync('/data', fs.constants.W_OK);
+  DB_PATH = '/data/data.db';
+} catch (e) {}
+if (DB_PATH === '/data/data.db' && !fs.existsSync(DB_PATH) && fs.existsSync(LOCAL_PATH)) {
+  fs.copyFileSync(LOCAL_PATH, DB_PATH);
+  console.log('Migrated local data.db to volume');
 }
 const db = new Database(DB_PATH);
 
@@ -96,6 +100,10 @@ const TUTOR_NAME_ALIASES = {
   'yatin pradeep': 'Yatin',
   'abhishek': 'Abhishek',
   'abhishek tm': 'Abhishek',
+  'ashitha': 'Ashitha KM',
+  'ashitha km': 'Ashitha KM',
+  'ashitaa': 'Ashitha KM',
+  'ashitaa k m': 'Ashitha KM',
 };
 
 function normalizeTutorName(raw) {
@@ -745,6 +753,76 @@ app.get('/api/sheet-tutor/:name', (req, res) => {
     });
   }
   res.json(entries.sort((a, b) => b.row - a.row));
+});
+
+app.get('/api/demo-completion', requireAuth, (req, res) => {
+  const from = (req.query.from || '').trim();
+  const to = (req.query.to || '').trim();
+  let entries = sheetDataCache;
+  if (from || to) {
+    entries = entries.filter(e => {
+      const d = e.date || '';
+      const m = d.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/);
+      let nd = d;
+      if (m) {
+        let dd = m[1].padStart(2, '0'), mm = m[2].padStart(2, '0'), yy = m[3];
+        if (yy.length === 2) yy = '20' + yy;
+        nd = `${yy}-${mm}-${dd}`;
+      }
+      if (from && nd < from) return false;
+      if (to && nd > to) return false;
+      return true;
+    });
+  }
+  const total = entries.length;
+  const completed = entries.filter(e => {
+    const s = (e.demo_status || '').toLowerCase();
+    return s.includes('done') && !s.includes('not');
+  }).length;
+  const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+  res.json({ total, completed, rate });
+});
+
+app.get('/api/conversion-rate', requireAuth, (req, res) => {
+  const from = (req.query.from || '').trim();
+  const to = (req.query.to || '').trim();
+  let entries = sheetDataCache;
+  if (from || to) {
+    entries = entries.filter(e => {
+      const d = e.date || '';
+      const m = d.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/);
+      let nd = d;
+      if (m) {
+        let dd = m[1].padStart(2, '0'), mm = m[2].padStart(2, '0'), yy = m[3];
+        if (yy.length === 2) yy = '20' + yy;
+        nd = `${yy}-${mm}-${dd}`;
+      }
+      if (from && nd < from) return false;
+      if (to && nd > to) return false;
+      return true;
+    });
+  }
+  const demoDone = entries.filter(e => {
+    const s = (e.demo_status || '').toLowerCase();
+    return s.includes('done') && !s.includes('not');
+  }).length;
+  const converted = entries.filter(e => (e.demo_status || '').toLowerCase() === 'converted').length;
+  const rate = demoDone > 0 ? Math.round((converted / demoDone) * 100) : 0;
+  res.json({ demoDone, converted, rate });
+});
+
+app.get('/api/demo-count', requireAuth, (req, res) => {
+  const target = (req.query.date || '').trim();
+  if (!target) return res.json({ count: 0 });
+  const count = sheetDataCache.filter(e => {
+    const d = e.date || '';
+    const m = d.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/);
+    if (!m) return d === target;
+    let dd = m[1].padStart(2, '0'), mm = m[2].padStart(2, '0'), yy = m[3];
+    if (yy.length === 2) yy = '20' + yy;
+    return `${yy}-${mm}-${dd}` === target;
+  }).length;
+  res.json({ count });
 });
 
 app.get('/api/sheet-data', requireAuth, (req, res) => {
