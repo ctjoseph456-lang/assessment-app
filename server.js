@@ -492,6 +492,21 @@ app.delete('/api/assessments/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.delete('/api/assessments/by-row/:row', async (req, res) => {
+  try {
+    const row = parseInt(req.params.row);
+    db.prepare('DELETE FROM assessments WHERE sheet_row = ?').run(row);
+    db.prepare('INSERT INTO sheet_statuses (row_number, status) VALUES (?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP').run(row, 'New', 'New');
+    const entry = sheetDataCache.find(e => e.row === row);
+    if (entry) { entry.status = 'New'; entry.demo_status = 'New'; }
+    await updateSheetRow(row, 'New');
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.patch('/api/assessments/:id/status', requireAuth, (req, res) => {
   const { status } = req.body;
   const valid = ['New', 'Contacted', 'CNR and Messaged', 'Hot/Potential', 'CNR 1', 'CNR 2', 'CNR 3', 'Not Interested', 'Converted'];
