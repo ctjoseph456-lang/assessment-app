@@ -849,6 +849,18 @@ app.get('/api/sheet-data', requireAuth, (req, res) => {
   res.json({ entries, lastSync });
 });
 
+app.patch('/api/sheet-data/:row/demo-not-done', async (req, res) => {
+  const row = parseInt(req.params.row);
+  const entry = sheetDataCache.find(e => e.row === row);
+  if (entry) entry.demo_status = 'Demo Not Done';
+  try {
+    await updateSheetRow(row, 'Demo Not Done');
+  } catch (e) {
+    console.error('Failed to update sheet:', e.message);
+  }
+  res.json({ success: true });
+});
+
 app.patch('/api/sheet-data/:row/status', requireAuth, async (req, res) => {
   const { status } = req.body;
   const valid = ['New', 'In Conversation', 'CNR', 'Hot', 'Converted'];
