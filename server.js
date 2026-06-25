@@ -471,7 +471,14 @@ app.get('/api/assessments', requireAuth, (req, res) => {
 });
 
 app.get('/api/assessments/by-row/:row', (req, res) => {
-  const a = db.prepare('SELECT * FROM assessments WHERE sheet_row = ? ORDER BY created_at DESC LIMIT 1').get(req.params.row);
+  const row = parseInt(req.params.row);
+  let a = db.prepare('SELECT * FROM assessments WHERE sheet_row = ? ORDER BY created_at DESC LIMIT 1').get(row);
+  if (!a) {
+    const entry = sheetDataCache.find(e => e.row === row);
+    if (entry) {
+      a = db.prepare("SELECT * FROM assessments WHERE tutor_name = ? AND student_name = ? AND slot = ? AND (date = ? OR date = '' OR date IS NULL) ORDER BY created_at DESC LIMIT 1").get(entry.tutor_name, entry.student_name, entry.slot, entry.date);
+    }
+  }
   if (!a) return res.json(null);
   if (req.query.tutor && a.tutor_name && a.tutor_name.toLowerCase() !== req.query.tutor.toLowerCase()) {
     return res.json(null);
@@ -479,6 +486,10 @@ app.get('/api/assessments/by-row/:row', (req, res) => {
   a.topics_known = JSON.parse(a.topics_known || '[]');
   a.topics_covered = JSON.parse(a.topics_covered || '[]');
   a.revision_topics = JSON.parse(a.revision_topics || '[]');
+  if (!a.sheet_row) {
+    db.prepare('UPDATE assessments SET sheet_row = ? WHERE id = ?').run(row, a.id);
+    a.sheet_row = row;
+  }
   res.json(a);
 });
 
