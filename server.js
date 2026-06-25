@@ -34,6 +34,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS sheet_statuses (
     row_number INTEGER PRIMARY KEY,
     status TEXT DEFAULT 'New',
+    demo_status TEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -64,6 +65,7 @@ db.exec(`
 
 try { db.exec('ALTER TABLE assessments ADD COLUMN sheet_row INTEGER DEFAULT NULL'); } catch (e) {}
 try { db.exec('ALTER TABLE users ADD COLUMN code TEXT UNIQUE'); } catch (e) {}
+try { db.exec('ALTER TABLE sheet_statuses ADD COLUMN demo_status TEXT'); } catch (e) {}
 
 function nameHash(name) {
   let hash = 0;
@@ -432,7 +434,7 @@ app.post('/api/assessments', (req, res) => {
     );
     if (sheet_row) {
       updateSheetRow(sheet_row, 'Demo Done');
-      db.prepare('INSERT INTO sheet_statuses (row_number, status) VALUES (?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP').run(sheet_row, 'Demo Done', 'Demo Done');
+      db.prepare("INSERT INTO sheet_statuses (row_number, status, demo_status) VALUES (?, ?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, demo_status = ?, updated_at = CURRENT_TIMESTAMP").run(sheet_row, 'Demo Done', 'Demo Done', 'Demo Done', 'Demo Done');
       const entry = sheetDataCache.find(e => e.row === parseInt(sheet_row));
       if (entry) { entry.status = 'Demo Done'; entry.demo_status = 'Demo Done'; }
     } else {
@@ -499,7 +501,7 @@ app.delete('/api/assessments/by-row/:row', async (req, res) => {
   try {
     const row = parseInt(req.params.row);
     db.prepare('DELETE FROM assessments WHERE sheet_row = ?').run(row);
-    db.prepare('INSERT INTO sheet_statuses (row_number, status) VALUES (?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, updated_at = CURRENT_TIMESTAMP').run(row, 'New', 'New');
+    db.prepare("INSERT INTO sheet_statuses (row_number, status, demo_status) VALUES (?, ?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, demo_status = NULL, updated_at = CURRENT_TIMESTAMP").run(row, 'New', null, 'New');
     const entry = sheetDataCache.find(e => e.row === row);
     if (entry) { entry.status = 'New'; entry.demo_status = 'New'; }
     await updateSheetRow(row, 'New');
@@ -719,10 +721,12 @@ async function syncSheet() {
       const rawName = (r[8] || '').trim();
       const normalized = normalizeTutorName(rawName);
       if (!normalized) continue;
-      const statusRow = db.prepare('SELECT status FROM sheet_statuses WHERE row_number = ?').get(i + 1);
+      const ss = db.prepare('SELECT status, demo_status FROM sheet_statuses WHERE row_number = ?').get(i + 1);
+      const sheetDemo = (r[0] || '').trim() || 'New';
+      const storedDemo = ss ? ss.demo_status : null;
       entries.push({
         row: i + 1,
-        demo_status: (r[0] || '').trim() || 'New',
+        demo_status: storedDemo || sheetDemo,
         slot: (r[2] || '').trim(),
         date: (r[6] || '').trim(),
         time: (r[7] || '').trim(),
@@ -732,7 +736,7 @@ async function syncSheet() {
         language: (r[12] || '').trim(),
         agent_name: (r[13] || '').trim(),
         phone: (r[17] || '').trim(),
-        status: statusRow ? statusRow.status : 'New',
+        status: ss ? ss.status : 'New',
       });
     }
     sheetDataCache = entries;
@@ -856,6 +860,7 @@ app.patch('/api/sheet-data/:row/demo-not-done', async (req, res) => {
   const row = parseInt(req.params.row);
   const entry = sheetDataCache.find(e => e.row === row);
   if (entry) entry.demo_status = 'Demo Not Done';
+  db.prepare("INSERT INTO sheet_statuses (row_number, status, demo_status) VALUES (?, ?, ?) ON CONFLICT(row_number) DO UPDATE SET demo_status = ?, updated_at = CURRENT_TIMESTAMP").run(row, 'New', 'Demo Not Done', 'Demo Not Done');
   try {
     await updateSheetRow(row, 'Demo Not Done');
   } catch (e) {
