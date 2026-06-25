@@ -66,6 +66,7 @@ db.exec(`
 try { db.exec('ALTER TABLE assessments ADD COLUMN sheet_row INTEGER DEFAULT NULL'); } catch (e) {}
 try { db.exec('ALTER TABLE users ADD COLUMN code TEXT UNIQUE'); } catch (e) {}
 try { db.exec('ALTER TABLE sheet_statuses ADD COLUMN demo_status TEXT'); } catch (e) {}
+try { db.exec("UPDATE sheet_statuses SET demo_status = 'Demo Done' WHERE row_number IN (SELECT sheet_row FROM assessments WHERE sheet_row IS NOT NULL) AND (demo_status IS NULL OR demo_status = '')"); } catch (e) {}
 
 function nameHash(name) {
   let hash = 0;
@@ -501,7 +502,7 @@ app.delete('/api/assessments/by-row/:row', async (req, res) => {
   try {
     const row = parseInt(req.params.row);
     db.prepare('DELETE FROM assessments WHERE sheet_row = ?').run(row);
-    db.prepare("INSERT INTO sheet_statuses (row_number, status, demo_status) VALUES (?, ?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, demo_status = NULL, updated_at = CURRENT_TIMESTAMP").run(row, 'New', null, 'New');
+    db.prepare("INSERT INTO sheet_statuses (row_number, status, demo_status) VALUES (?, ?, ?) ON CONFLICT(row_number) DO UPDATE SET status = ?, demo_status = ?, updated_at = CURRENT_TIMESTAMP").run(row, 'New', 'New', 'New', 'New');
     const entry = sheetDataCache.find(e => e.row === row);
     if (entry) { entry.status = 'New'; entry.demo_status = 'New'; }
     await updateSheetRow(row, 'New');
@@ -724,9 +725,17 @@ async function syncSheet() {
       const ss = db.prepare('SELECT status, demo_status FROM sheet_statuses WHERE row_number = ?').get(i + 1);
       const sheetDemo = (r[0] || '').trim() || 'New';
       const storedDemo = ss ? ss.demo_status : null;
+      let useDemo;
+      if (storedDemo) {
+        useDemo = storedDemo;
+      } else if (sheetDemo === 'Demo Not Done') {
+        useDemo = 'New';
+      } else {
+        useDemo = sheetDemo;
+      }
       entries.push({
         row: i + 1,
-        demo_status: storedDemo || sheetDemo,
+        demo_status: useDemo,
         slot: (r[2] || '').trim(),
         date: (r[6] || '').trim(),
         time: (r[7] || '').trim(),
