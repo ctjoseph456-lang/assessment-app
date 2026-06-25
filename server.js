@@ -730,6 +730,8 @@ async function syncSheet() {
         useDemo = storedDemo;
       } else if (sheetDemo === 'Demo Not Done') {
         useDemo = 'New';
+      } else if (sheetDemo === 'Demo Done') {
+        useDemo = 'Assessment Pending';
       } else {
         useDemo = sheetDemo;
       }
@@ -808,7 +810,7 @@ app.get('/api/demo-completion', requireAuth, (req, res) => {
   const total = entries.length;
   const completed = entries.filter(e => {
     const s = (e.demo_status || '').toLowerCase();
-    return s.includes('done') && !s.includes('not');
+    return (s.includes('done') && !s.includes('not')) || s === 'assessment pending';
   }).length;
   const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
   res.json({ total, completed, rate });
@@ -835,7 +837,7 @@ app.get('/api/conversion-rate', requireAuth, (req, res) => {
   }
   const demoDone = entries.filter(e => {
     const s = (e.demo_status || '').toLowerCase();
-    return s.includes('done') && !s.includes('not');
+    return (s.includes('done') && !s.includes('not')) || s === 'assessment pending';
   }).length;
   const converted = entries.filter(e => (e.demo_status || '').toLowerCase() === 'converted').length;
   const rate = demoDone > 0 ? Math.round((converted / demoDone) * 100) : 0;
