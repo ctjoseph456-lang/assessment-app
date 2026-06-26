@@ -182,8 +182,8 @@
               </tr>
             </thead>
             <tbody>${entries.map(e => {
-              const rowClass = (() => { const s = e.demo_status.toLowerCase(); if (s.includes('assessment pending')) return 'AssessmentPending'; if (s.includes('not done')) return 'DemoNotDone'; if (s.includes('done')) return 'DemoDone'; if (s === 'converted') return 'Converted'; if (s === 'hot') return 'Hot'; return 'New'; })();
-              const demoBadgeColors = { 'New':'#3b82f6', 'Demo Not Done':'#ef4444', 'Demo Done':'#fb923c', 'Assessment Pending':'#d97706', 'Converted':'#22c55e', 'Hot':'#a855f7' };
+              const rowClass = (() => { const s = e.demo_status.toLowerCase(); if (s.includes('assessment pending')) return 'AssessmentPending'; if (s.includes('cancelled')) return 'DemoCancelled'; if (s.includes('not done')) return 'DemoNotDone'; if (s.includes('done')) return 'DemoDone'; if (s === 'converted') return 'Converted'; if (s === 'hot') return 'Hot'; return 'New'; })();
+              const demoBadgeColors = { 'New':'#3b82f6', 'Demo Not Done':'#ef4444', 'Demo Cancelled':'#ef4444', 'Demo Done':'#fb923c', 'Assessment Pending':'#d97706', 'Converted':'#22c55e', 'Hot':'#a855f7' };
               const demoColor = demoBadgeColors[e.demo_status] || '#6b7280';
               const followUpStatus = e.status || 'New';
               const followUpColors = { 'New':'#3b82f6', 'In Conversation':'#f59e0b', 'CNR':'#ef4444', 'Hot':'#a855f7', 'Converted':'#22c55e' };
