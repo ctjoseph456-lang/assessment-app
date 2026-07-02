@@ -765,16 +765,18 @@ async function syncSheet() {
         // Old rows (June 1-30): use raw sheet column A value, no modifications
         useDemo = sheetDemo;
       } else {
-        // New rows (July 1+): stored status or assessment-based
-        if (storedDemo) {
-          useDemo = storedDemo;
+        // New rows (July 1+): real assessment-based status
+        const hasAssessment = db.prepare('SELECT id FROM assessments WHERE sheet_row = ? LIMIT 1').get(i + 1);
+        if (storedDemo === 'Demo Not Done') {
+          useDemo = 'Demo Not Done';
+        } else if (hasAssessment) {
+          useDemo = 'Demo Done';
         } else if (sheetDemo === 'Demo Not Done') {
           useDemo = 'Demo Not Done';
-        } else if (sheetDemo === 'Demo Done') {
-          useDemo = 'Demo Done';
+        } else if (sheetDemo === 'Converted' || storedDemo === 'Converted') {
+          useDemo = 'Converted';
         } else {
-          const hasAssessment = db.prepare('SELECT id FROM assessments WHERE sheet_row = ? LIMIT 1').get(i + 1);
-          useDemo = hasAssessment ? 'Demo Done' : 'New';
+          useDemo = 'New';
         }
       }
       entries.push({
