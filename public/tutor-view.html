@@ -111,12 +111,12 @@
             <input type="text" id="form_tutor_name" required readonly>
           </div>
           <div>
-            <label>Student Age *</label>
-            <input type="text" id="form_student_age" required>
+            <label>Student Age</label>
+            <input type="text" id="form_student_age">
           </div>
           <div>
-            <label>Language *</label>
-            <select id="form_language" required>
+            <label>Language</label>
+            <select id="form_language">
               <option value="">Select</option>
               <option>Malayalam</option>
               <option>English</option>
@@ -142,7 +142,7 @@
           <textarea id="form_feedback" required style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.9rem;box-sizing:border-box;min-height:60px;resize:vertical"></textarea>
         </div>
         <div style="margin-top:12px">
-          <label>Interest Level *</label>
+          <label>Interest Level</label>
           <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap" id="formInterestGroup"></div>
         </div>
         <div style="margin-top:12px">
@@ -178,7 +178,7 @@
       const labels = ['', '', '', 'Interested', 'Highly Interested'];
       container.innerHTML = [1,2,3,4,5].map(n => `
         <label style="display:flex;flex-direction:column;align-items:center;padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;background:var(--surface)">
-          <input type="radio" name="form_interest" value="${n}" required style="margin-bottom:4px">
+          <input type="radio" name="form_interest" value="${n}" style="margin-bottom:4px">
           <span style="font-size:0.8rem">${'★'.repeat(n)}${'☆'.repeat(5-n)}</span>
           <span style="font-size:0.7rem;color:var(--text-secondary)">${labels[n]||''}</span>
         </label>`).join('');
@@ -488,7 +488,6 @@
     document.getElementById('assessmentForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const level = document.getElementById('form_level').value;
-      if (!level) return alert('Please select a student level');
 
       const getChecked = (group) => {
         const container = document.querySelector(`[data-group="${group}"]`);
@@ -515,14 +514,12 @@
         additional_remarks: document.getElementById('form_remarks').value
       };
 
-      const missing = [];
-      if (!payload.tutor_name) missing.push('Tutor Name');
-      if (!payload.student_age) missing.push('Student Age');
-      if (!payload.language) missing.push('Language');
-      if (!payload.feedback) missing.push('Feedback');
-      if (!payload.interest_level) missing.push('Interest Level');
-      if (missing.length) {
-        alert('Please fill: ' + missing.join(', '));
+      if (!payload.feedback) {
+        alert('Please fill in Feedback');
+        return;
+      }
+      if (level && !payload.start_topic) {
+        alert('Please fill in Recommended Start Topic');
         return;
       }
 

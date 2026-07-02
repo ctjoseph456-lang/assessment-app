@@ -420,17 +420,17 @@ app.get('/api/topics/:level', (req, res) => {
 app.post('/api/assessments', async (req, res) => {
   try {
     const { tutor_name, phone, slot, student_name, student_age, language, level, topics_known, topics_covered, start_topic, revision_topics, feedback, interest_level, additional_remarks, date, time, sheet_row } = req.body;
-    if (!slot || !student_name || !student_age || !language || !level || !feedback || !interest_level) {
+    if (!feedback) {
       return res.status(400).json({ error: 'Required fields missing' });
     }
     const stmt = db.prepare(`INSERT INTO assessments
       (user_id, tutor_name, phone, slot, student_name, student_age, language, level, topics_known, topics_covered, start_topic, revision_topics, feedback, interest_level, additional_remarks, date, time, sheet_row)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     const result = stmt.run(
-      req.session.userId, tutor_name || '', phone || '', slot, student_name, student_age, language, level,
+      req.session.userId, tutor_name || '', phone || '', slot || '', student_name || '', student_age || '', language || '', level || '',
       JSON.stringify(topics_known || []), JSON.stringify(topics_covered || []),
       start_topic || '', JSON.stringify(revision_topics || []),
-      feedback, interest_level, additional_remarks || '', date || '', time || '',
+      feedback, interest_level || 0, additional_remarks || '', date || '', time || '',
       sheet_row || null
     );
     if (sheet_row) {
